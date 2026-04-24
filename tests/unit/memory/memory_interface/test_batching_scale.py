@@ -12,8 +12,10 @@ import uuid
 from unittest.mock import patch
 
 from pyrit.memory import MemoryInterface
-from pyrit.memory.memory_interface import _SQLITE_MAX_BIND_VARS
-from pyrit.models import MessagePiece, Score
+from pyrit.models import AttackResult, MessagePiece, Score
+
+# Use the class attribute for the batch limit in tests
+_MAX_BIND_VARS = MemoryInterface._MAX_BIND_VARS
 
 
 def _create_message_piece(
@@ -58,7 +60,7 @@ class TestBatchingScale:
     def test_get_message_pieces_with_many_prompt_ids(self, sqlite_instance: MemoryInterface):
         """Test that get_message_pieces works with more IDs than the batch limit."""
         # Create more message pieces than the batch limit
-        num_pieces = _SQLITE_MAX_BIND_VARS + 100
+        num_pieces = _MAX_BIND_VARS + 100
         pieces = [_create_message_piece() for _ in range(num_pieces)]
 
         # Add to memory
@@ -72,7 +74,7 @@ class TestBatchingScale:
 
     def test_get_message_pieces_with_exact_batch_size(self, sqlite_instance: MemoryInterface):
         """Test that get_message_pieces works with exactly the batch limit."""
-        num_pieces = _SQLITE_MAX_BIND_VARS
+        num_pieces = _MAX_BIND_VARS
         pieces = [_create_message_piece() for _ in range(num_pieces)]
 
         sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
@@ -84,7 +86,7 @@ class TestBatchingScale:
 
     def test_get_message_pieces_with_double_batch_size(self, sqlite_instance: MemoryInterface):
         """Test that get_message_pieces works with double the batch limit."""
-        num_pieces = _SQLITE_MAX_BIND_VARS * 2
+        num_pieces = _MAX_BIND_VARS * 2
         pieces = [_create_message_piece() for _ in range(num_pieces)]
 
         sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
@@ -97,7 +99,7 @@ class TestBatchingScale:
     def test_get_scores_with_many_score_ids(self, sqlite_instance: MemoryInterface):
         """Test that get_scores works with more IDs than the batch limit."""
         # Create message pieces first (scores need to reference them)
-        num_scores = _SQLITE_MAX_BIND_VARS + 100
+        num_scores = _MAX_BIND_VARS + 100
         pieces = [_create_message_piece() for _ in range(num_scores)]
         sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
 
@@ -114,7 +116,7 @@ class TestBatchingScale:
     def test_get_prompt_scores_with_many_prompt_ids(self, sqlite_instance: MemoryInterface):
         """Test that get_prompt_scores works with more prompt IDs than the batch limit."""
         # Create message pieces
-        num_pieces = _SQLITE_MAX_BIND_VARS + 50
+        num_pieces = _MAX_BIND_VARS + 50
         pieces = [_create_message_piece() for _ in range(num_pieces)]
         sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
 
@@ -132,7 +134,7 @@ class TestBatchingScale:
     def test_get_message_pieces_batching_preserves_other_filters(self, sqlite_instance: MemoryInterface):
         """Test that batching still applies other filter conditions correctly."""
         # Create pieces with different roles
-        num_pieces = _SQLITE_MAX_BIND_VARS + 50
+        num_pieces = _MAX_BIND_VARS + 50
         user_pieces = [_create_message_piece(role="user") for _ in range(num_pieces)]
 
         assistant_pieces = [_create_message_piece(role="assistant") for _ in range(50)]
@@ -159,7 +161,7 @@ class TestBatchingScale:
 
     def test_get_message_pieces_with_many_original_values(self, sqlite_instance: MemoryInterface):
         """Test that get_message_pieces works with many original_values exceeding batch limit."""
-        num_pieces = _SQLITE_MAX_BIND_VARS + 100
+        num_pieces = _MAX_BIND_VARS + 100
         # Create pieces with unique original values
         pieces = [_create_message_piece(original_value=f"unique_value_{i}") for i in range(num_pieces)]
         sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
@@ -172,7 +174,7 @@ class TestBatchingScale:
 
     def test_get_message_pieces_with_many_converted_value_sha256(self, sqlite_instance: MemoryInterface):
         """Test that get_message_pieces works with many converted_value_sha256 exceeding batch limit."""
-        num_pieces = _SQLITE_MAX_BIND_VARS + 100
+        num_pieces = _MAX_BIND_VARS + 100
         pieces = [_create_message_piece(original_value=f"unique_value_{i}") for i in range(num_pieces)]
         sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
 
@@ -180,7 +182,7 @@ class TestBatchingScale:
         stored_pieces = sqlite_instance.get_message_pieces()
         all_hashes = [piece.converted_value_sha256 for piece in stored_pieces if piece.converted_value_sha256]
 
-        if len(all_hashes) > _SQLITE_MAX_BIND_VARS:
+        if len(all_hashes) > _MAX_BIND_VARS:
             results = sqlite_instance.get_message_pieces(converted_value_sha256=all_hashes)
             assert len(results) == len(all_hashes)
 
@@ -211,7 +213,7 @@ class TestBatchingScale:
     def test_get_message_pieces_multiple_large_params_simultaneously(self, sqlite_instance: MemoryInterface):
         """Test batching with multiple parameters exceeding batch limit simultaneously."""
         # Create enough pieces to exceed batch limit with unique values
-        num_pieces = _SQLITE_MAX_BIND_VARS + 200
+        num_pieces = _MAX_BIND_VARS + 200
         pieces = [_create_message_piece(original_value=f"original_value_{i}") for i in range(num_pieces)]
 
         # Add to memory
@@ -251,7 +253,7 @@ class TestBatchingScale:
     def test_get_message_pieces_multiple_batched_params_with_query_spy(self, sqlite_instance: MemoryInterface):
         """Test that batching executes multiple separate queries and merges results correctly."""
         # Create pieces exceeding batch limit
-        num_pieces = _SQLITE_MAX_BIND_VARS + 100
+        num_pieces = _MAX_BIND_VARS + 100
         pieces = [_create_message_piece(original_value=f"value_{i}") for i in range(num_pieces)]
         sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
 
@@ -276,9 +278,9 @@ class TestBatchingScale:
         assert len(results) == num_pieces
 
         # With the new batching approach, multiple separate queries should be executed
-        # when the primary batch parameter exceeds _SQLITE_MAX_BIND_VARS
-        # Expected: ceil(num_pieces / _SQLITE_MAX_BIND_VARS) = 2 queries
-        expected_min_calls = (num_pieces + _SQLITE_MAX_BIND_VARS - 1) // _SQLITE_MAX_BIND_VARS
+        # when the primary batch parameter exceeds _MAX_BIND_VARS
+        # Expected: ceil(num_pieces / _MAX_BIND_VARS) = 2 queries
+        expected_min_calls = (num_pieces + _MAX_BIND_VARS - 1) // _MAX_BIND_VARS
         assert call_count >= expected_min_calls, (
             f"Expected at least {expected_min_calls} separate queries for {num_pieces} items, "
             f"but only got {call_count} calls"
@@ -287,7 +289,7 @@ class TestBatchingScale:
     def test_get_message_pieces_triple_large_params_preserves_intersection(self, sqlite_instance: MemoryInterface):
         """Test that filtering with 3 large parameter lists returns correct intersection."""
         # Create a large set of pieces
-        total_pieces = _SQLITE_MAX_BIND_VARS + 150
+        total_pieces = _MAX_BIND_VARS + 150
         pieces = [
             _create_message_piece(conversation_id=str(uuid.uuid4()), original_value=f"content_{i}")
             for i in range(total_pieces)
@@ -305,7 +307,7 @@ class TestBatchingScale:
         filter_original_values = [p.original_value for p in stored_pieces[:total_pieces]]
 
         # List 3: Subset of SHA256 hashes (to test intersection)
-        subset_size = _SQLITE_MAX_BIND_VARS + 50
+        subset_size = _MAX_BIND_VARS + 50
         filter_sha256 = [p.converted_value_sha256 for p in stored_pieces[:subset_size]]
 
         # Query with all three large parameters
@@ -353,7 +355,7 @@ class TestExecuteBatchedQuery:
     def test_execute_batched_query_large_list_multiple_queries(self, sqlite_instance: MemoryInterface):
         """Test that large lists execute multiple separate queries."""
         # Create pieces exceeding batch limit
-        num_pieces = _SQLITE_MAX_BIND_VARS * 3  # 3 batches needed
+        num_pieces = _MAX_BIND_VARS * 3  # 3 batches needed
         pieces = [_create_message_piece() for _ in range(num_pieces)]
         sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
 
@@ -393,7 +395,7 @@ class TestExecuteBatchedQuery:
 
     def test_execute_batched_query_exact_batch_boundary(self, sqlite_instance: MemoryInterface):
         """Test querying with exactly the batch limit (edge case)."""
-        num_pieces = _SQLITE_MAX_BIND_VARS
+        num_pieces = _MAX_BIND_VARS
         pieces = [_create_message_piece() for _ in range(num_pieces)]
         sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
 
@@ -417,7 +419,7 @@ class TestExecuteBatchedQuery:
     def test_batching_with_scores_exceeds_limit(self, sqlite_instance: MemoryInterface):
         """Test that get_scores handles large numbers of score IDs correctly."""
         # Create message pieces and scores exceeding the limit
-        num_items = _SQLITE_MAX_BIND_VARS * 2 + 50
+        num_items = _MAX_BIND_VARS * 2 + 50
         pieces = [_create_message_piece() for _ in range(num_items)]
         sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
 
@@ -440,6 +442,76 @@ class TestExecuteBatchedQuery:
             results = sqlite_instance.get_scores(score_ids=all_score_ids)
 
         # Should execute multiple queries
-        expected_calls = (num_items + _SQLITE_MAX_BIND_VARS - 1) // _SQLITE_MAX_BIND_VARS
+        expected_calls = (num_items + _MAX_BIND_VARS - 1) // _MAX_BIND_VARS
         assert call_count == expected_calls, f"Expected {expected_calls} queries, got {call_count}"
         assert len(results) == num_items
+
+
+def _create_attack_result(conversation_id: str | None = None, objective: str = "test objective") -> AttackResult:
+    """Create a sample attack result for testing."""
+    return AttackResult(
+        conversation_id=conversation_id or str(uuid.uuid4()),
+        objective=objective,
+    )
+
+
+class TestAttackResultBatching:
+    """Tests for batching in get_attack_results."""
+
+    def test_get_attack_results_with_many_ids(self, sqlite_instance: MemoryInterface):
+        """Test that get_attack_results works with more IDs than the batch limit."""
+        num_results = _MAX_BIND_VARS + 100
+        results = [_create_attack_result(objective=f"objective_{i}") for i in range(num_results)]
+        sqlite_instance.add_attack_results_to_memory(attack_results=results)
+
+        all_ids = [r.attack_result_id for r in results]
+        fetched = sqlite_instance.get_attack_results(attack_result_ids=all_ids)
+
+        assert len(fetched) == num_results, f"Expected {num_results} results, got {len(fetched)}"
+
+    def test_get_attack_results_with_many_objective_sha256(self, sqlite_instance: MemoryInterface):
+        """Test that get_attack_results works with many objective_sha256 values exceeding batch limit."""
+        num_results = _MAX_BIND_VARS + 100
+        results = [_create_attack_result(objective=f"unique_objective_{i}") for i in range(num_results)]
+        sqlite_instance.add_attack_results_to_memory(attack_results=results)
+
+        all_sha256 = [hashlib.sha256(f"unique_objective_{i}".encode()).hexdigest() for i in range(num_results)]
+        fetched = sqlite_instance.get_attack_results(objective_sha256=all_sha256)
+
+        assert len(fetched) == num_results, f"Expected {num_results} results, got {len(fetched)}"
+
+    def test_get_attack_results_small_list_still_works(self, sqlite_instance: MemoryInterface):
+        """Test that small ID lists (under batch limit) still work correctly."""
+        num_results = 10
+        results = [_create_attack_result(objective=f"objective_{i}") for i in range(num_results)]
+        sqlite_instance.add_attack_results_to_memory(attack_results=results)
+
+        all_ids = [r.attack_result_id for r in results]
+        fetched = sqlite_instance.get_attack_results(attack_result_ids=all_ids)
+
+        assert len(fetched) == num_results
+
+    def test_get_attack_results_empty_list_returns_empty(self, sqlite_instance: MemoryInterface):
+        """Test that explicit empty list returns empty results."""
+        results = [_create_attack_result() for _ in range(5)]
+        sqlite_instance.add_attack_results_to_memory(attack_results=results)
+
+        fetched = sqlite_instance.get_attack_results(attack_result_ids=[])
+        assert fetched == []
+
+        fetched = sqlite_instance.get_attack_results(objective_sha256=[])
+        assert fetched == []
+
+
+class TestScoresEmptyList:
+    """Tests for get_scores empty list handling."""
+
+    def test_get_scores_empty_list_returns_empty(self, sqlite_instance: MemoryInterface):
+        """Test that get_scores with explicit empty score_ids returns empty results."""
+        pieces = [_create_message_piece() for _ in range(3)]
+        sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
+        scores = [_create_score(str(p.id)) for p in pieces]
+        sqlite_instance.add_scores_to_memory(scores=scores)
+
+        fetched = sqlite_instance.get_scores(score_ids=[])
+        assert fetched == []

@@ -57,9 +57,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# ref: https://www.sqlite.org/limits.html
-# Lowest default maximum is 999, intentionally setting it to half
-_SQLITE_MAX_BIND_VARS = 500
 
 Model = TypeVar("Model")
 
@@ -72,6 +69,11 @@ class MemoryInterface(abc.ABC):
     and conversation history. Implementations can use different storage backends
     such as files, databases, or cloud storage services.
     """
+
+    # Maximum number of bind variables per SQL statement.
+    # Conservative default based on SQLite's limit of 999. Subclasses can override
+    # for backends with higher limits (e.g., Azure SQL supports 2100).
+    _MAX_BIND_VARS: int = 500
 
     memory_embedding: MemoryEmbedding | None = None
     results_storage_io: StorageIO | None = None
@@ -382,7 +384,7 @@ class MemoryInterface(abc.ABC):
             other_conditions = []
 
         # If values fit in one batch, execute a single query
-        if len(batch_values) <= _SQLITE_MAX_BIND_VARS:
+        if len(batch_values) <= self._MAX_BIND_VARS:
             conditions = other_conditions + [batch_column.in_(batch_values)]
             return self._query_entries(
                 model_class,
@@ -395,8 +397,8 @@ class MemoryInterface(abc.ABC):
         all_results: MutableSequence[Model] = []
         seen_ids: set[str] = set()
 
-        for i in range(0, len(batch_values), _SQLITE_MAX_BIND_VARS):
-            batch = batch_values[i : i + _SQLITE_MAX_BIND_VARS]
+        for i in range(0, len(batch_values), self._MAX_BIND_VARS):
+            batch = batch_values[i : i + self._MAX_BIND_VARS]
             conditions = other_conditions + [batch_column.in_(batch)]
 
             results = self._query_entries(
@@ -594,6 +596,9 @@ class MemoryInterface(abc.ABC):
         Returns:
             Sequence[Score]: A list of Score objects that match the specified filters.
         """
+        if score_ids is not None and len(score_ids) == 0:
+            return []
+
         conditions: list[Any] = []
 
         if score_type:
@@ -849,8 +854,8 @@ class MemoryInterface(abc.ABC):
                 return sort_message_pieces(message_pieces=message_pieces)
 
             # Find which list params need batching (exceed limit)
-            large_params = [(col, vals, name) for col, vals, name in list_params if len(vals) > _SQLITE_MAX_BIND_VARS]
-            small_params = [(col, vals, name) for col, vals, name in list_params if len(vals) <= _SQLITE_MAX_BIND_VARS]
+            large_params = [(col, vals, name) for col, vals, name in list_params if len(vals) > self._MAX_BIND_VARS]
+            small_params = [(col, vals, name) for col, vals, name in list_params if len(vals) <= self._MAX_BIND_VARS]
 
             # Add small list params to base conditions
             for col, vals, _ in small_params:
@@ -1694,8 +1699,8 @@ class MemoryInterface(abc.ABC):
                 return self._dedup_attack_entries(entries)
 
             # Find which list params need batching
-            large_params = [(col, vals, name) for col, vals, name in list_params if len(vals) > _SQLITE_MAX_BIND_VARS]
-            small_params = [(col, vals, name) for col, vals, name in list_params if len(vals) <= _SQLITE_MAX_BIND_VARS]
+            large_params = [(col, vals, name) for col, vals, name in list_params if len(vals) > self._MAX_BIND_VARS]
+            small_params = [(col, vals, name) for col, vals, name in list_params if len(vals) <= self._MAX_BIND_VARS]
 
             # Add small list params to conditions
             for col, vals, _ in small_params:
@@ -1998,7 +2003,7 @@ class MemoryInterface(abc.ABC):
 
         try:
             # Handle scenario_result_ids with batched queries if needed
-            if scenario_result_ids and len(scenario_result_ids) > _SQLITE_MAX_BIND_VARS:
+            if scenario_result_ids and len(scenario_result_ids) > self._MAX_BIND_VARS:
                 entries = self._execute_batched_query(
                     ScenarioResultEntry,
                     batch_column=ScenarioResultEntry.id,
@@ -2026,7 +2031,7 @@ class MemoryInterface(abc.ABC):
 
                 # Query all AttackResults using batched queries if needed
                 if all_conversation_ids:
-                    if len(all_conversation_ids) > _SQLITE_MAX_BIND_VARS:
+                    if len(all_conversation_ids) > self._MAX_BIND_VARS:
                         attack_entries = self._execute_batched_query(
                             AttackResultEntry,
                             batch_column=AttackResultEntry.conversation_id,
