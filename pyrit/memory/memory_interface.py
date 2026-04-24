@@ -362,16 +362,13 @@ class MemoryInterface(abc.ABC):
         other_conditions: list[Any] | None = None,
         distinct: bool = False,
         join_scores: bool = False,
+        batch_size: int | None = None,
     ) -> MutableSequence[Model]:
         """
         Execute queries in batches to avoid exceeding database bind variable limits.
 
         SQLite and other databases have per-statement parameter limits. This method
         executes separate queries for each batch of values and merges the results.
-
-        Note: The batch size is based on ``_MAX_BIND_VARS`` and does not account for
-        bind variables contributed by ``other_conditions``. Callers should ensure that
-        ``other_conditions`` does not contain a large number of bound parameters.
 
         Args:
             model_class: The SQLAlchemy model class to query.
@@ -380,6 +377,8 @@ class MemoryInterface(abc.ABC):
             other_conditions: Additional SQLAlchemy conditions to include in each query.
             distinct: Whether to return distinct rows only.
             join_scores: Whether to join the scores table.
+            batch_size: Override for the number of values per batch.
+                Defaults to ``_MAX_BIND_VARS`` when not specified.
 
         Returns:
             MutableSequence[Model]: Merged and deduplicated results from all batched queries.
@@ -387,8 +386,10 @@ class MemoryInterface(abc.ABC):
         if other_conditions is None:
             other_conditions = []
 
+        effective_size = batch_size if batch_size is not None else self._MAX_BIND_VARS
+
         # If values fit in one batch, execute a single query
-        if len(batch_values) <= self._MAX_BIND_VARS:
+        if len(batch_values) <= effective_size:
             conditions = other_conditions + [batch_column.in_(batch_values)]
             return self._query_entries(
                 model_class,
@@ -401,8 +402,8 @@ class MemoryInterface(abc.ABC):
         all_results: MutableSequence[Model] = []
         seen_ids: set[str] = set()
 
-        for i in range(0, len(batch_values), self._MAX_BIND_VARS):
-            batch = batch_values[i : i + self._MAX_BIND_VARS]
+        for i in range(0, len(batch_values), effective_size):
+            batch = batch_values[i : i + effective_size]
             conditions = other_conditions + [batch_column.in_(batch)]
 
             results = self._query_entries(
@@ -424,6 +425,76 @@ class MemoryInterface(abc.ABC):
                     all_results.append(result)
 
         return all_results
+
+    def _query_with_list_params(
+        self,
+        model_class: type[Model],
+        *,
+        conditions: list[Any],
+        list_params: list[tuple[InstrumentedAttribute[Any], Sequence[Any], str]],
+        join_scores: bool = False,
+    ) -> MutableSequence[Model]:
+        """
+        Execute a query with list-based IN filters, batching when lists exceed bind limits.
+
+        Splits list parameters into "small" (fit in one query) and "large" (need batching).
+        Small params are added to the SQL conditions directly. The first large param is
+        batched via ``_execute_batched_query``; any remaining large params are filtered
+        in Python after fetching.
+
+        The effective batch size is reduced to account for bind variables contributed by
+        small params, preventing cumulative overflow of the per-statement limit.
+
+        Args:
+            model_class: The SQLAlchemy model class to query.
+            conditions: Base conditions (scalar filters) to include in every query.
+            list_params: List of (column, values, attr_name) tuples for IN-clause filters.
+            join_scores: Whether to join the scores table.
+
+        Returns:
+            MutableSequence[Model]: Query results with all filters applied.
+        """
+        if not list_params:
+            return self._query_entries(
+                model_class,
+                conditions=and_(*conditions) if conditions else None,
+                join_scores=join_scores,
+            )
+
+        large_params = [(col, vals, name) for col, vals, name in list_params if len(vals) > self._MAX_BIND_VARS]
+        small_params = [(col, vals, name) for col, vals, name in list_params if len(vals) <= self._MAX_BIND_VARS]
+
+        small_param_binds = sum(len(vals) for _, vals, _ in small_params)
+        for col, vals, _ in small_params:
+            conditions.append(col.in_(vals))
+
+        if not large_params:
+            return self._query_entries(
+                model_class,
+                conditions=and_(*conditions) if conditions else None,
+                join_scores=join_scores,
+            )
+
+        batch_col, batch_vals, _ = large_params[0]
+        other_large_params = large_params[1:]
+
+        # Reduce batch size to account for bind variables already used by small params
+        effective_batch_size = max(1, self._MAX_BIND_VARS - small_param_binds)
+
+        results = self._execute_batched_query(
+            model_class,
+            batch_column=batch_col,
+            batch_values=batch_vals,
+            other_conditions=conditions,
+            join_scores=join_scores,
+            batch_size=effective_batch_size,
+        )
+
+        for _col, vals, attr_name in other_large_params:
+            vals_set = set(vals)
+            results = [e for e in results if getattr(e, attr_name, None) in vals_set]
+
+        return results
 
     @abc.abstractmethod
     def _insert_entry(self, entry: Base) -> None:
@@ -835,7 +906,7 @@ class MemoryInterface(abc.ABC):
                     )
                 )
 
-            # Identify list parameters and whether they need batching
+            # Identify list parameters that may need batching
             list_params: list[tuple[InstrumentedAttribute[Any], Sequence[Any], str]] = []
             if prompt_ids:
                 list_params.append((PromptMemoryEntry.id, [str(pi) for pi in prompt_ids], "id"))
@@ -848,52 +919,12 @@ class MemoryInterface(abc.ABC):
                     (PromptMemoryEntry.converted_value_sha256, list(converted_value_sha256), "converted_value_sha256")
                 )
 
-            # If no list params, execute simple query
-            if not list_params:
-                memory_entries: Sequence[PromptMemoryEntry] = self._query_entries(
-                    PromptMemoryEntry,
-                    conditions=and_(*conditions) if conditions else None,
-                    join_scores=True,
-                )
-                message_pieces = [memory_entry.get_message_piece() for memory_entry in memory_entries]
-                return sort_message_pieces(message_pieces=message_pieces)
-
-            # Find which list params need batching (exceed limit)
-            large_params = [(col, vals, name) for col, vals, name in list_params if len(vals) > self._MAX_BIND_VARS]
-            small_params = [(col, vals, name) for col, vals, name in list_params if len(vals) <= self._MAX_BIND_VARS]
-
-            # Add small list params to base conditions
-            for col, vals, _ in small_params:
-                conditions.append(col.in_(vals))
-
-            # If no large params, execute simple query
-            if not large_params:
-                memory_entries = self._query_entries(
-                    PromptMemoryEntry,
-                    conditions=and_(*conditions) if conditions else None,
-                    join_scores=True,
-                )
-                message_pieces = [memory_entry.get_message_piece() for memory_entry in memory_entries]
-                return sort_message_pieces(message_pieces=message_pieces)
-
-            # Batch on the first large parameter
-            batch_col, batch_vals, _ = large_params[0]
-            other_large_params = large_params[1:]
-
-            # Execute batched query
-            memory_entries = self._execute_batched_query(
+            memory_entries = self._query_with_list_params(
                 PromptMemoryEntry,
-                batch_column=batch_col,
-                batch_values=batch_vals,
-                other_conditions=conditions,
+                conditions=conditions,
+                list_params=list_params,
                 join_scores=True,
             )
-
-            # If there are additional large params, filter results in Python
-            for _col, vals, attr_name in other_large_params:
-                vals_set = set(vals)
-                memory_entries = [e for e in memory_entries if getattr(e, attr_name, None) in vals_set]
-
             message_pieces = [memory_entry.get_message_piece() for memory_entry in memory_entries]
             return sort_message_pieces(message_pieces=message_pieces)
         except Exception as e:
@@ -1689,50 +1720,17 @@ class MemoryInterface(abc.ABC):
             )
 
         try:
-            # Identify list parameters and whether they need batching
             list_params: list[tuple[InstrumentedAttribute[Any], Sequence[Any], str]] = []
             if attack_result_ids:
                 list_params.append((AttackResultEntry.id, list(attack_result_ids), "id"))
             if objective_sha256:
                 list_params.append((AttackResultEntry.objective_sha256, list(objective_sha256), "objective_sha256"))
 
-            # If no list params, execute simple query
-            if not list_params:
-                entries: Sequence[AttackResultEntry] = self._query_entries(
-                    AttackResultEntry, conditions=and_(*conditions) if conditions else None
-                )
-                return self._dedup_attack_entries(entries)
-
-            # Find which list params need batching
-            large_params = [(col, vals, name) for col, vals, name in list_params if len(vals) > self._MAX_BIND_VARS]
-            small_params = [(col, vals, name) for col, vals, name in list_params if len(vals) <= self._MAX_BIND_VARS]
-
-            # Add small list params to conditions
-            for col, vals, _ in small_params:
-                conditions.append(col.in_(vals))
-
-            # If no large params, execute simple query
-            if not large_params:
-                entries = self._query_entries(AttackResultEntry, conditions=and_(*conditions) if conditions else None)
-                return self._dedup_attack_entries(entries)
-
-            # Batch on the first large parameter
-            batch_col, batch_vals, _ = large_params[0]
-            other_large_params = large_params[1:]
-
-            # Execute batched query
-            entries = self._execute_batched_query(
+            entries = self._query_with_list_params(
                 AttackResultEntry,
-                batch_column=batch_col,
-                batch_values=batch_vals,
-                other_conditions=conditions,
+                conditions=conditions,
+                list_params=list_params,
             )
-
-            # If there are additional large params, filter results in Python
-            for _col, vals, attr_name in other_large_params:
-                vals_set = set(vals)
-                entries = [e for e in entries if getattr(e, attr_name, None) in vals_set]
-
             return self._dedup_attack_entries(entries)
         except Exception as e:
             logger.exception(f"Failed to retrieve attack results with error {e}")
