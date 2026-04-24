@@ -359,7 +359,7 @@ class MemoryInterface(abc.ABC):
         *,
         batch_column: InstrumentedAttribute[Any],
         batch_values: Sequence[Any],
-        other_conditions: Optional[list[Any]] = None,
+        other_conditions: list[Any] | None = None,
         distinct: bool = False,
         join_scores: bool = False,
     ) -> MutableSequence[Model]:
@@ -368,6 +368,10 @@ class MemoryInterface(abc.ABC):
 
         SQLite and other databases have per-statement parameter limits. This method
         executes separate queries for each batch of values and merges the results.
+
+        Note: The batch size is based on ``_MAX_BIND_VARS`` and does not account for
+        bind variables contributed by ``other_conditions``. Callers should ensure that
+        ``other_conditions`` does not contain a large number of bound parameters.
 
         Args:
             model_class: The SQLAlchemy model class to query.
@@ -410,12 +414,13 @@ class MemoryInterface(abc.ABC):
 
             # Deduplicate by primary key (id)
             for result in results:
-                result_id = str(getattr(result, "id", None))
-                if result_id and result_id not in seen_ids:
-                    seen_ids.add(result_id)
-                    all_results.append(result)
-                elif not result_id:
-                    # If no id attribute, just append
+                result_id = getattr(result, "id", None)
+                if result_id is not None:
+                    id_str = str(result_id)
+                    if id_str not in seen_ids:
+                        seen_ids.add(id_str)
+                        all_results.append(result)
+                else:
                     all_results.append(result)
 
         return all_results
@@ -2003,16 +2008,13 @@ class MemoryInterface(abc.ABC):
 
         try:
             # Handle scenario_result_ids with batched queries if needed
-            if scenario_result_ids and len(scenario_result_ids) > self._MAX_BIND_VARS:
+            if scenario_result_ids:
                 entries = self._execute_batched_query(
                     ScenarioResultEntry,
                     batch_column=ScenarioResultEntry.id,
                     batch_values=list(scenario_result_ids),
                     other_conditions=conditions,
                 )
-            elif scenario_result_ids:
-                conditions = conditions + [ScenarioResultEntry.id.in_(list(scenario_result_ids))]
-                entries = self._query_entries(ScenarioResultEntry, conditions=and_(*conditions) if conditions else None)
             else:
                 entries = self._query_entries(ScenarioResultEntry, conditions=and_(*conditions) if conditions else None)
 
@@ -2031,17 +2033,11 @@ class MemoryInterface(abc.ABC):
 
                 # Query all AttackResults using batched queries if needed
                 if all_conversation_ids:
-                    if len(all_conversation_ids) > self._MAX_BIND_VARS:
-                        attack_entries = self._execute_batched_query(
-                            AttackResultEntry,
-                            batch_column=AttackResultEntry.conversation_id,
-                            batch_values=all_conversation_ids,
-                        )
-                    else:
-                        attack_entries = self._query_entries(
-                            AttackResultEntry,
-                            conditions=AttackResultEntry.conversation_id.in_(all_conversation_ids),
-                        )
+                    attack_entries = self._execute_batched_query(
+                        AttackResultEntry,
+                        batch_column=AttackResultEntry.conversation_id,
+                        batch_values=all_conversation_ids,
+                    )
 
                     # Build a dict for quick lookup
                     attack_results_dict = {entry.conversation_id: entry.get_attack_result() for entry in attack_entries}

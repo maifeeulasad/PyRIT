@@ -182,9 +182,9 @@ class TestBatchingScale:
         stored_pieces = sqlite_instance.get_message_pieces()
         all_hashes = [piece.converted_value_sha256 for piece in stored_pieces if piece.converted_value_sha256]
 
-        if len(all_hashes) > _MAX_BIND_VARS:
-            results = sqlite_instance.get_message_pieces(converted_value_sha256=all_hashes)
-            assert len(results) == len(all_hashes)
+        assert len(all_hashes) > _MAX_BIND_VARS, "Test setup failed: not enough hashes to trigger batching"
+        results = sqlite_instance.get_message_pieces(converted_value_sha256=all_hashes)
+        assert len(results) == len(all_hashes)
 
     def test_get_message_pieces_combines_filters_correctly(self, sqlite_instance: MemoryInterface):
         """Test that multiple filters can be combined (e.g., prompt_ids AND role)."""
