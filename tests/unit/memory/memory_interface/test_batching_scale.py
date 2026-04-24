@@ -515,3 +515,72 @@ class TestScoresEmptyList:
 
         fetched = sqlite_instance.get_scores(score_ids=[])
         assert fetched == []
+
+
+class TestEffectiveBatchSize:
+    """Tests for effective batch size reduction when small + large params are combined."""
+
+    def test_batch_size_reduced_by_small_params(self, sqlite_instance: MemoryInterface):
+        """Test that batch size is reduced when small IN-clause params consume bind variables."""
+        # Create pieces with unique values so we can filter by both prompt_ids and original_values
+        num_pieces = _MAX_BIND_VARS + 100
+        pieces = [_create_message_piece(original_value=f"value_{i}") for i in range(num_pieces)]
+        sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
+
+        # small param: original_values with 200 items (under _MAX_BIND_VARS)
+        small_original_values = [f"value_{i}" for i in range(200)]
+        # large param: prompt_ids with all IDs (over _MAX_BIND_VARS)
+        all_ids = [piece.id for piece in pieces]
+
+        original_query = sqlite_instance._query_entries
+        call_count = 0
+
+        def spy_query(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            return original_query(*args, **kwargs)
+
+        with patch.object(sqlite_instance, "_query_entries", side_effect=spy_query):
+            results = sqlite_instance.get_message_pieces(
+                prompt_ids=all_ids,
+                original_values=small_original_values,
+            )
+
+        # With 200 small param binds, effective_batch_size = 500 - 200 = 300
+        # num_pieces = 600, so ceil(600 / 300) = 2 batches
+        effective_batch_size = _MAX_BIND_VARS - 200
+        expected_calls = (num_pieces + effective_batch_size - 1) // effective_batch_size
+        assert call_count == expected_calls, (
+            f"Expected {expected_calls} queries (effective_batch={effective_batch_size}), got {call_count}"
+        )
+        # Results should be the intersection: only pieces whose original_value is in small_original_values
+        assert len(results) == 200
+
+    def test_custom_batch_size_on_execute_batched_query(self, sqlite_instance: MemoryInterface):
+        """Test that _execute_batched_query respects custom batch_size parameter."""
+        num_pieces = 100
+        pieces = [_create_message_piece() for _ in range(num_pieces)]
+        sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
+
+        from pyrit.memory.memory_models import PromptMemoryEntry
+
+        original_query = sqlite_instance._query_entries
+        call_count = 0
+
+        def spy_query(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            return original_query(*args, **kwargs)
+
+        all_ids = [piece.id for piece in pieces]
+        with patch.object(sqlite_instance, "_query_entries", side_effect=spy_query):
+            results = sqlite_instance._execute_batched_query(
+                PromptMemoryEntry,
+                batch_column=PromptMemoryEntry.id,
+                batch_values=all_ids,
+                batch_size=30,
+            )
+
+        # 100 items / batch_size 30 = ceil(100/30) = 4 batches
+        assert call_count == 4, f"Expected 4 queries with batch_size=30, got {call_count}"
+        assert len(results) == num_pieces
