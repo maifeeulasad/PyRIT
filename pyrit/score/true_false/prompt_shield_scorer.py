@@ -6,6 +6,7 @@ import logging
 import uuid
 from typing import Any, Optional
 
+from pyrit.identifiers import ComponentIdentifier
 from pyrit.models import Message, MessagePiece, Score, ScoreType
 from pyrit.prompt_target import PromptShieldTarget
 from pyrit.score.scorer_prompt_validator import ScorerPromptValidator
@@ -26,7 +27,7 @@ class PromptShieldScorer(TrueFalseScorer):
     scorer_type: ScoreType
     _prompt_shield_target: PromptShieldTarget
 
-    _default_validator: ScorerPromptValidator = ScorerPromptValidator(supported_data_types=["text"])
+    _DEFAULT_VALIDATOR: ScorerPromptValidator = ScorerPromptValidator(supported_data_types=["text"])
 
     def __init__(
         self,
@@ -46,13 +47,22 @@ class PromptShieldScorer(TrueFalseScorer):
         """
         self._prompt_target = prompt_shield_target
 
-        super().__init__(validator=validator or self._default_validator, score_aggregator=score_aggregator)
+        super().__init__(validator=validator or self._DEFAULT_VALIDATOR, score_aggregator=score_aggregator)
 
-    def _build_scorer_identifier(self) -> None:
-        """Build the scorer evaluation identifier for this scorer."""
-        self._set_scorer_identifier(
-            prompt_target=self._prompt_target,
-            score_aggregator=self._score_aggregator.__name__,
+    def _build_identifier(self) -> ComponentIdentifier:
+        """
+        Build the identifier for this scorer.
+
+        Returns:
+            ComponentIdentifier: The identifier for this scorer.
+        """
+        return self._create_identifier(
+            params={
+                "score_aggregator": self._score_aggregator.__name__,
+            },
+            children={
+                "prompt_target": self._prompt_target.get_identifier(),
+            },
         )
 
     async def _score_piece_async(self, message_piece: MessagePiece, *, objective: Optional[str] = None) -> list[Score]:
@@ -109,20 +119,16 @@ class PromptShieldScorer(TrueFalseScorer):
         """
         response_json: dict[str, Any] = json.loads(response)
 
-        user_detections = []
-        document_detections = []
-
         user_prompt_attack: dict[str, bool] = response_json.get("userPromptAnalysis", False)
         documents_attack: list[dict[str, Any]] = response_json.get("documentsAnalysis", False)
 
-        if not user_prompt_attack:
-            user_detections = [False]
-        else:
-            user_detections = [user_prompt_attack.get("attackDetected")]
+        user_detections: list[bool] = (
+            [False] if not user_prompt_attack else [bool(user_prompt_attack.get("attackDetected"))]
+        )
 
         if not documents_attack:
-            document_detections = [False]
+            document_detections: list[bool] = [False]
         else:
-            document_detections = [document.get("attackDetected") for document in documents_attack]
+            document_detections = [bool(document.get("attackDetected")) for document in documents_attack]
 
         return user_detections + document_detections

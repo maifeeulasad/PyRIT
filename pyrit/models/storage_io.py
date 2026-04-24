@@ -79,6 +79,7 @@ class DiskStorageIO(StorageIO):
 
         Returns:
             bytes: The content of the file.
+
         """
         path = self._convert_to_path(path)
         async with aiofiles.open(path, "rb") as file:
@@ -91,6 +92,7 @@ class DiskStorageIO(StorageIO):
         Args:
             path (Path): The path to the file.
             data (bytes): The content to write to the file.
+
         """
         path = self._convert_to_path(path)
         async with aiofiles.open(path, "wb") as file:
@@ -98,26 +100,28 @@ class DiskStorageIO(StorageIO):
 
     async def path_exists(self, path: Union[Path, str]) -> bool:
         """
-        Checks if a path exists on the local disk.
+        Check whether a path exists on the local disk.
 
         Args:
             path (Path): The path to check.
 
         Returns:
             bool: True if the path exists, False otherwise.
+
         """
         path = self._convert_to_path(path)
         return os.path.exists(path)
 
     async def is_file(self, path: Union[Path, str]) -> bool:
         """
-        Checks if the given path is a file (not a directory).
+        Check whether the given path is a file (not a directory).
 
         Args:
             path (Path): The path to check.
 
         Returns:
             bool: True if the path is a file, False otherwise.
+
         """
         path = self._convert_to_path(path)
         return os.path.isfile(path)
@@ -128,6 +132,7 @@ class DiskStorageIO(StorageIO):
 
         Args:
             path (Path): The directory path to create.
+
         """
         directory_path = self._convert_to_path(path)
         if not directory_path.exists():
@@ -135,10 +140,16 @@ class DiskStorageIO(StorageIO):
 
     def _convert_to_path(self, path: Union[Path, str]) -> Path:
         """
-        Converts the path to a Path object if it's a string.
+        Convert an input path to a Path object.
+
+        Args:
+            path (Union[Path, str]): Input path value.
+
+        Returns:
+            Path: Normalized Path instance.
+
         """
-        path = Path(path) if isinstance(path, str) else path
-        return path
+        return Path(path) if isinstance(path, str) else path
 
 
 class AzureBlobStorageIO(StorageIO):
@@ -153,20 +164,38 @@ class AzureBlobStorageIO(StorageIO):
         sas_token: Optional[str] = None,
         blob_content_type: SupportedContentType = SupportedContentType.PLAIN_TEXT,
     ) -> None:
+        """
+        Initialize an Azure Blob Storage I/O adapter.
+
+        Args:
+            container_url (Optional[str]): Azure Blob container URL.
+            sas_token (Optional[str]): Optional SAS token.
+            blob_content_type (SupportedContentType): Blob content type for uploads.
+
+        Raises:
+            ValueError: If container_url is missing.
+
+        """
         self._blob_content_type: str = blob_content_type.value
         if not container_url:
             raise ValueError("Invalid Azure Storage Account Container URL.")
 
         self._container_url: str = container_url
         self._sas_token = sas_token
-        self._client_async: AsyncContainerClient = None
+        self._client_async: AsyncContainerClient | None = None
 
-    async def _create_container_client_async(self) -> None:
+    async def _create_container_client_async(self) -> AsyncContainerClient:
         """
-        Creates an asynchronous ContainerClient for Azure Storage. If a SAS token is provided via the
+        Create an asynchronous ContainerClient for Azure Storage.
+
+        If a SAS token is provided via the
         AZURE_STORAGE_ACCOUNT_SAS_TOKEN environment variable or the init sas_token parameter, it will be used
         for authentication. Otherwise, a delegation SAS token will be created using Entra ID authentication.
+
+        Returns:
+            AsyncContainerClient: The initialized container client.
         """
+        sas_token = self._sas_token
         if not self._sas_token:
             logger.info("SAS token not provided. Creating a delegation SAS token using Entra ID authentication.")
             sas_token = await AzureStorageAuth.get_sas_token(self._container_url)
@@ -175,6 +204,7 @@ class AzureBlobStorageIO(StorageIO):
             container_url=self._container_url,
             credential=sas_token,
         )
+        return self._client_async
 
     async def _upload_blob_async(self, file_name: str, data: bytes, content_type: str) -> None:
         """
@@ -184,11 +214,16 @@ class AzureBlobStorageIO(StorageIO):
             file_name (str): File name to assign to uploaded blob.
             data (bytes): Byte representation of content to upload to container.
             content_type (str): Content type to upload.
+
+        Raises:
+            RuntimeError: If the Azure container client is not initialized.
         """
         content_settings = ContentSettings(content_type=f"{content_type}")  # type: ignore[no-untyped-call, unused-ignore]
         logger.info(msg="\nUploading to Azure Storage as blob:\n\t" + file_name)
 
         try:
+            if self._client_async is None:
+                raise RuntimeError("Azure container client not initialized")
             await self._client_async.upload_blob(
                 name=file_name,
                 data=data,
@@ -199,24 +234,60 @@ class AzureBlobStorageIO(StorageIO):
             if isinstance(exc, ClientAuthenticationError):
                 logger.exception(
                     msg="Authentication failed. Please check that the container existence in the "
-                    + "Azure Storage Account and ensure the validity of the provided SAS token. If you "
-                    + "haven't set the SAS token as an environment variable use `az login` to "
-                    + "enable delegation-based SAS authentication to connect to the storage account"
+                    "Azure Storage Account and ensure the validity of the provided SAS token. If you "
+                    "haven't set the SAS token as an environment variable use `az login` to "
+                    "enable delegation-based SAS authentication to connect to the storage account"
                 )
                 raise
-            else:
-                logger.exception(msg=f"An unexpected error occurred: {exc}")
-                raise
+            logger.exception(msg=f"An unexpected error occurred: {exc}")
+            raise
 
     def parse_blob_url(self, file_path: str) -> tuple[str, str]:
-        """Parses the blob URL to extract the container name and blob name."""
+        """
+        Parse a blob URL to extract the container and blob name.
+
+        Args:
+            file_path (str): Full blob URL.
+
+        Returns:
+            tuple[str, str]: Container name and blob name.
+
+        Raises:
+            ValueError: If file_path is not a valid blob URL.
+
+        """
         parsed_url = urlparse(file_path)
         if parsed_url.scheme and parsed_url.netloc:
             container_name = parsed_url.path.split("/")[1]
             blob_name = "/".join(parsed_url.path.split("/")[2:])
             return container_name, blob_name
-        else:
-            raise ValueError("Invalid blob URL")
+        raise ValueError("Invalid blob URL")
+
+    def _resolve_blob_name(self, path: Union[Path, str]) -> str:
+        """
+        Resolve a blob name from either a full blob URL or a relative blob path.
+
+        When a full URL is provided the blob name is extracted from it. The container
+        name embedded in the URL is intentionally discarded — operations always run
+        against the container configured in the constructor.
+
+        Backslashes are normalized to forward slashes so that ``Path`` objects
+        created on Windows still produce valid blob names.
+
+        Args:
+            path (Union[Path, str]): Blob URL or relative blob path.
+
+        Returns:
+            str: The resolved blob name.
+
+        """
+        path_str = str(path).replace("\\", "/")
+        try:
+            # parse_blob_url validates scheme + netloc internally
+            _, blob_name = self.parse_blob_url(path_str)
+            return blob_name
+        except ValueError:
+            return path_str
 
     async def read_file(self, path: Union[Path, str]) -> bytes:
         """
@@ -234,29 +305,24 @@ class AzureBlobStorageIO(StorageIO):
         Returns:
             bytes: The content of the file (blob) as bytes.
 
-        Raises:
-            Exception: If there is an error in reading the blob file, an exception will be logged
-                    and re-raised.
-
         Example:
             file_content =
             await read_file("https://account.blob.core.windows.net/container/dir2/1726627689003831.png")
             # Or using a relative path:
             file_content = await read_file("dir1/dir2/1726627689003831.png")
+
         """
         if not self._client_async:
-            await self._create_container_client_async()
+            self._client_async = await self._create_container_client_async()
 
-        _, blob_name = self.parse_blob_url(str(path))
+        blob_name = self._resolve_blob_name(path)
 
         try:
             blob_client = self._client_async.get_blob_client(blob=blob_name)
 
             # Download the blob
             blob_stream = await blob_client.download_blob()
-            file_content = await blob_stream.readall()
-
-            return file_content
+            return bytes(await blob_stream.readall())
 
         except Exception as exc:
             logger.exception(f"Failed to read file at {blob_name}: {exc}")
@@ -267,15 +333,18 @@ class AzureBlobStorageIO(StorageIO):
 
     async def write_file(self, path: Union[Path, str], data: bytes) -> None:
         """
-        Writes data to Azure Blob Storage at the specified path.
+        Write data to Azure Blob Storage at the specified path.
+
+        If the provided ``path`` is a full URL, the blob name is extracted from it.
+        If a relative path is provided, it is used as the blob name directly.
 
         Args:
-            path (str): The full Azure Blob Storage URL
+            path (Union[Path, str]): Full blob URL or relative blob path.
             data (bytes): The data to write.
         """
         if not self._client_async:
-            await self._create_container_client_async()
-        _, blob_name = self.parse_blob_url(str(path))
+            self._client_async = await self._create_container_client_async()
+        blob_name = self._resolve_blob_name(path)
         try:
             await self._upload_blob_async(file_name=blob_name, data=data, content_type=self._blob_content_type)
         except Exception as exc:
@@ -286,11 +355,19 @@ class AzureBlobStorageIO(StorageIO):
             self._client_async = None
 
     async def path_exists(self, path: Union[Path, str]) -> bool:
-        """Check if a given path exists in the Azure Blob Storage container."""
+        """
+        Check whether a given path exists in the Azure Blob Storage container.
+
+        Args:
+            path (Union[Path, str]): Blob URL or path to test.
+
+        Returns:
+            bool: True when the path exists.
+        """
         if not self._client_async:
-            await self._create_container_client_async()
+            self._client_async = await self._create_container_client_async()
         try:
-            _, blob_name = self.parse_blob_url(str(path))
+            blob_name = self._resolve_blob_name(path)
             blob_client = self._client_async.get_blob_client(blob=blob_name)
             await blob_client.get_blob_properties()
             return True
@@ -301,14 +378,22 @@ class AzureBlobStorageIO(StorageIO):
             self._client_async = None
 
     async def is_file(self, path: Union[Path, str]) -> bool:
-        """Check if the path refers to a file (blob) in Azure Blob Storage."""
+        """
+        Check whether the path refers to a file (blob) in Azure Blob Storage.
+
+        Args:
+            path (Union[Path, str]): Blob URL or path to test.
+
+        Returns:
+            bool: True when the blob exists and has non-zero content size.
+        """
         if not self._client_async:
-            await self._create_container_client_async()
+            self._client_async = await self._create_container_client_async()
         try:
-            _, blob_name = self.parse_blob_url(str(path))
+            blob_name = self._resolve_blob_name(path)
             blob_client = self._client_async.get_blob_client(blob=blob_name)
             blob_properties = await blob_client.get_blob_properties()
-            return blob_properties.size > 0
+            return bool(blob_properties.size > 0)
         except ResourceNotFoundError:
             return False
         finally:
@@ -316,6 +401,13 @@ class AzureBlobStorageIO(StorageIO):
             self._client_async = None
 
     async def create_directory_if_not_exists(self, directory_path: Union[Path, str]) -> None:
+        """
+        Log a no-op directory creation for Azure Blob Storage.
+
+        Args:
+            directory_path (Union[Path, str]): Requested directory path.
+
+        """
         logger.info(
             f"Directory creation is handled automatically during upload operations in Azure Blob Storage. "
             f"Directory path: {directory_path}"

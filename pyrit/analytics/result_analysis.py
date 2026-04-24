@@ -3,7 +3,7 @@
 
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import DefaultDict, Optional
+from typing import Optional
 
 from pyrit.models import AttackOutcome, AttackResult
 
@@ -54,15 +54,16 @@ def analyze_results(attack_results: list[AttackResult]) -> dict[str, AttackStats
     if not attack_results:
         raise ValueError("attack_results cannot be empty")
 
-    overall_counts: DefaultDict[str, int] = defaultdict(int)
-    by_type_counts: DefaultDict[str, DefaultDict[str, int]] = defaultdict(lambda: defaultdict(int))
+    overall_counts: defaultdict[str, int] = defaultdict(int)
+    by_type_counts: defaultdict[str, defaultdict[str, int]] = defaultdict(lambda: defaultdict(int))
 
     for attack in attack_results:
         if not isinstance(attack, AttackResult):
             raise TypeError(f"Expected AttackResult, got {type(attack).__name__}: {attack!r}")
 
         outcome = attack.outcome
-        attack_type = attack.attack_identifier.get("type", "unknown")
+        _strategy_id = attack.get_attack_strategy_identifier()
+        attack_type = _strategy_id.class_name if _strategy_id is not None else "unknown"
 
         if outcome == AttackOutcome.SUCCESS:
             overall_counts["successes"] += 1

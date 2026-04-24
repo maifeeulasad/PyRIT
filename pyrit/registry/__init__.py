@@ -1,9 +1,9 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT license.
 
-"""Registry module for PyRIT class and instance registries."""
+"""Registry module for PyRIT class and object registries."""
 
-from pyrit.registry.base import RegistryItemMetadata, RegistryProtocol
+from pyrit.registry.base import RegistryProtocol
 from pyrit.registry.class_registries import (
     BaseClassRegistry,
     ClassEntry,
@@ -17,28 +17,36 @@ from pyrit.registry.discovery import (
     discover_in_package,
     discover_subclasses_in_loaded_modules,
 )
-from pyrit.registry.instance_registries import (
+from pyrit.registry.object_registries import (
+    AttackTechniqueRegistry,
+    AttackTechniqueSpec,
     BaseInstanceRegistry,
-    ScorerMetadata,
+    ConverterRegistry,
+    RegistryEntry,
+    RetrievableInstanceRegistry,
     ScorerRegistry,
+    TargetRegistry,
 )
-from pyrit.registry.name_utils import class_name_to_registry_name, registry_name_to_class_name
+from pyrit.registry.tag_query import TagQuery
 
 __all__ = [
+    "AttackTechniqueRegistry",
     "BaseClassRegistry",
     "BaseInstanceRegistry",
+    "ConverterRegistry",
+    "RetrievableInstanceRegistry",
     "ClassEntry",
-    "class_name_to_registry_name",
     "discover_in_directory",
     "discover_in_package",
     "discover_subclasses_in_loaded_modules",
     "InitializerMetadata",
     "InitializerRegistry",
-    "RegistryItemMetadata",
+    "RegistryEntry",
     "RegistryProtocol",
-    "registry_name_to_class_name",
     "ScenarioMetadata",
     "ScenarioRegistry",
-    "ScorerMetadata",
     "ScorerRegistry",
+    "TargetRegistry",
+    "AttackTechniqueSpec",
+    "TagQuery",
 ]

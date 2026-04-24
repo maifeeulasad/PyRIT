@@ -5,14 +5,15 @@ import os
 import tempfile
 import time
 import uuid
-from datetime import datetime, timedelta
-from typing import MutableSequence
-from unittest.mock import MagicMock
+import warnings
+from collections.abc import MutableSequence
+from datetime import datetime, timedelta, timezone
 
 import pytest
-from unit.mocks import MockPromptTarget, get_sample_conversations
+from unit.mocks import MockPromptTarget, get_mock_target, get_sample_conversations
 
 from pyrit.executor.attack import PromptSendingAttack
+from pyrit.identifiers import ComponentIdentifier
 from pyrit.models import (
     Message,
     MessagePiece,
@@ -40,7 +41,7 @@ def test_id_set():
 
 
 def test_datetime_set():
-    now = datetime.now()
+    now = datetime.now(tz=timezone.utc)
     time.sleep(0.1)
     entry = MessagePiece(
         role="user",
@@ -63,8 +64,8 @@ def test_converters_serialize():
 
     converter = entry.converter_identifiers[0]
 
-    assert converter["__type__"] == "Base64Converter"
-    assert converter["__module__"] == "pyrit.prompt_converter.base64_converter"
+    assert converter.class_name == "Base64Converter"
+    assert converter.class_module == "pyrit.prompt_converter.base64_converter"
 
 
 def test_prompt_targets_serialize(patch_central_database):
@@ -76,12 +77,12 @@ def test_prompt_targets_serialize(patch_central_database):
         prompt_target_identifier=target.get_identifier(),
     )
     assert patch_central_database.called
-    assert entry.prompt_target_identifier["__type__"] == "MockPromptTarget"
-    assert entry.prompt_target_identifier["__module__"] == "unit.mocks"
+    assert entry.prompt_target_identifier.class_name == "MockPromptTarget"
+    assert entry.prompt_target_identifier.class_module == "unit.mocks"
 
 
 def test_executors_serialize():
-    attack = PromptSendingAttack(objective_target=MagicMock())
+    attack = PromptSendingAttack(objective_target=get_mock_target())
 
     entry = MessagePiece(
         role="user",
@@ -90,9 +91,9 @@ def test_executors_serialize():
         attack_identifier=attack.get_identifier(),
     )
 
-    assert entry.attack_identifier["id"] is not None
-    assert entry.attack_identifier["__type__"] == "PromptSendingAttack"
-    assert entry.attack_identifier["__module__"] == "pyrit.executor.attack.single_turn.prompt_sending"
+    assert entry.attack_identifier.hash is not None
+    assert entry.attack_identifier.class_name == "PromptSendingAttack"
+    assert entry.attack_identifier.class_module == "pyrit.executor.attack.single_turn.prompt_sending"
 
 
 @pytest.mark.asyncio
@@ -153,7 +154,7 @@ def test_hashes_generated_files_unknown_type():
         MessagePiece(
             role="user",
             original_value="Hello1",
-            original_value_data_type="new_unknown_type",  # type: ignore
+            original_value_data_type="new_unknown_type",  # type: ignore[arg-type]
         )
 
 
@@ -363,7 +364,7 @@ def test_message_piece_no_roles():
         Message(
             message_pieces=[
                 MessagePiece(
-                    role="",  # type: ignore
+                    role="",  # type: ignore[arg-type]
                     converted_value_data_type="text",
                     original_value="Hello",
                     converted_value="Hello",
@@ -402,7 +403,7 @@ def test_order_message_pieces_by_conversation_single_conversation():
             id="prompt-1",
             original_value="Hello 1",
             conversation_id="conv1",
-            timestamp=datetime.now() - timedelta(seconds=10),
+            timestamp=datetime.now(tz=timezone.utc) - timedelta(seconds=10),
             sequence=2,
         ),
         MessagePiece(
@@ -410,7 +411,7 @@ def test_order_message_pieces_by_conversation_single_conversation():
             id="prompt-2",
             original_value="Hello 2",
             conversation_id="conv1",
-            timestamp=datetime.now() - timedelta(seconds=10),
+            timestamp=datetime.now(tz=timezone.utc) - timedelta(seconds=10),
             sequence=1,
         ),
         MessagePiece(
@@ -418,7 +419,7 @@ def test_order_message_pieces_by_conversation_single_conversation():
             id="prompt-3",
             original_value="Hello 3",
             conversation_id="conv1",
-            timestamp=datetime.now(),
+            timestamp=datetime.now(tz=timezone.utc),
             sequence=3,
         ),
     ]
@@ -460,7 +461,7 @@ def test_order_message_pieces_by_conversation_multiple_conversations():
             role="user",
             original_value="Hello 4",
             conversation_id="conv2",
-            timestamp=datetime.now() - timedelta(seconds=5),
+            timestamp=datetime.now(tz=timezone.utc) - timedelta(seconds=5),
             sequence=2,
             id="4",
         ),
@@ -468,7 +469,7 @@ def test_order_message_pieces_by_conversation_multiple_conversations():
             role="user",
             original_value="Hello 1",
             conversation_id="conv1",
-            timestamp=datetime.now() - timedelta(seconds=15),
+            timestamp=datetime.now(tz=timezone.utc) - timedelta(seconds=15),
             sequence=1,
             id="1",
         ),
@@ -476,7 +477,7 @@ def test_order_message_pieces_by_conversation_multiple_conversations():
             role="user",
             original_value="Hello 3",
             conversation_id="conv2",
-            timestamp=datetime.now() - timedelta(seconds=10),
+            timestamp=datetime.now(tz=timezone.utc) - timedelta(seconds=10),
             sequence=1,
             id="3",
         ),
@@ -484,7 +485,7 @@ def test_order_message_pieces_by_conversation_multiple_conversations():
             role="user",
             original_value="Hello 2",
             conversation_id="conv1",
-            timestamp=datetime.now() - timedelta(seconds=10),
+            timestamp=datetime.now(tz=timezone.utc) - timedelta(seconds=10),
             sequence=2,
             id="2",
         ),
@@ -529,7 +530,7 @@ def test_order_message_pieces_by_conversation_multiple_conversations():
 
 
 def test_order_message_pieces_by_conversation_same_timestamp():
-    timestamp = datetime.now()
+    timestamp = datetime.now(tz=timezone.utc)
 
     pieces = [
         MessagePiece(
@@ -601,8 +602,8 @@ def test_order_message_pieces_by_conversation_same_timestamp():
         ),
     ]
 
-    sorted = sort_message_pieces(pieces)
-    assert sorted == expected
+    sorted_pieces = sort_message_pieces(pieces)
+    assert sorted_pieces == expected
 
 
 def test_order_message_pieces_by_conversation_empty_list():
@@ -621,10 +622,20 @@ def test_order_message_pieces_by_conversation_single_message():
 def test_order_message_pieces_by_conversation_same_timestamp_different_sequences():
     pieces = [
         MessagePiece(
-            role="user", original_value="Hello 2", conversation_id="conv1", timestamp=datetime.now(), sequence=2, id="2"
+            role="user",
+            original_value="Hello 2",
+            conversation_id="conv1",
+            timestamp=datetime.now(tz=timezone.utc),
+            sequence=2,
+            id="2",
         ),
         MessagePiece(
-            role="user", original_value="Hello 1", conversation_id="conv1", timestamp=datetime.now(), sequence=1, id="1"
+            role="user",
+            original_value="Hello 1",
+            conversation_id="conv1",
+            timestamp=datetime.now(tz=timezone.utc),
+            sequence=1,
+            id="1",
         ),
     ]
     for i, piece in enumerate(pieces):
@@ -662,21 +673,30 @@ def test_message_piece_to_dict():
         targeted_harm_categories=["violence", "illegal"],
         prompt_metadata={"key": "metadata"},
         converter_identifiers=[
-            {"__type__": "Base64Converter", "__module__": "pyrit.prompt_converter.base64_converter"}
+            ComponentIdentifier(
+                class_name="Base64Converter",
+                class_module="pyrit.prompt_converter.base64_converter",
+                params={"supported_input_types": ["text"], "supported_output_types": ["text"]},
+            )
         ],
-        prompt_target_identifier={"__type__": "MockPromptTarget", "__module__": "unit.mocks"},
-        attack_identifier={
-            "id": str(uuid.uuid4()),
-            "__type__": "PromptSendingAttack",
-            "__module__": "pyrit.executor.attack.single_turn.prompt_sending_attack",
-        },
-        scorer_identifier={"key": "value"},
+        prompt_target_identifier=ComponentIdentifier(
+            class_name="MockPromptTarget",
+            class_module="unit.mocks",
+        ),
+        attack_identifier=ComponentIdentifier(
+            class_name="PromptSendingAttack",
+            class_module="pyrit.executor.attack.single_turn.prompt_sending_attack",
+        ),
+        scorer_identifier=ComponentIdentifier(
+            class_name="TestScorer",
+            class_module="pyrit.score.test_scorer",
+        ),
         original_value_data_type="text",
         converted_value_data_type="text",
         response_error="none",
         originator="undefined",
         original_prompt_id=uuid.uuid4(),
-        timestamp=datetime.now(),
+        timestamp=datetime.now(tz=timezone.utc),
         scores=[
             Score(
                 id=str(uuid.uuid4()),
@@ -686,9 +706,12 @@ def test_message_piece_to_dict():
                 score_category=["Category1"],
                 score_rationale="Rationale text",
                 score_metadata={"key": "value"},
-                scorer_class_identifier={"class": "Scorer1"},
+                scorer_class_identifier=ComponentIdentifier(
+                    class_name="Scorer1",
+                    class_module="pyrit.score",
+                ),
                 message_piece_id=str(uuid.uuid4()),
-                timestamp=datetime.now(),
+                timestamp=datetime.now(tz=timezone.utc),
                 objective="Task1",
             )
         ],
@@ -732,10 +755,10 @@ def test_message_piece_to_dict():
     assert result["labels"] == entry.labels
     assert result["targeted_harm_categories"] == entry.targeted_harm_categories
     assert result["prompt_metadata"] == entry.prompt_metadata
-    assert result["converter_identifiers"] == entry.converter_identifiers
-    assert result["prompt_target_identifier"] == entry.prompt_target_identifier
-    assert result["attack_identifier"] == entry.attack_identifier
-    assert result["scorer_identifier"] == entry.scorer_identifier
+    assert result["converter_identifiers"] == [conv.to_dict() for conv in entry.converter_identifiers]
+    assert result["prompt_target_identifier"] == entry.prompt_target_identifier.to_dict()
+    assert result["attack_identifier"] == entry.attack_identifier.to_dict()
+    assert result["scorer_identifier"] == entry.scorer_identifier.to_dict()
     assert result["original_value_data_type"] == entry.original_value_data_type
     assert result["original_value"] == entry.original_value
     assert result["original_value_sha256"] == entry.original_value_sha256
@@ -746,6 +769,47 @@ def test_message_piece_to_dict():
     assert result["originator"] == entry.originator
     assert result["original_prompt_id"] == str(entry.original_prompt_id)
     assert result["scores"] == [score.to_dict() for score in entry.scores]
+
+
+def test_message_piece_scorer_identifier_dict_backward_compatibility():
+    """Test that passing a dict for scorer_identifier normalizes to ComponentIdentifier."""
+
+    scorer_dict = {
+        "class_name": "TestScorer",
+        "class_module": "pyrit.score.test_scorer",
+    }
+
+    entry = MessagePiece(
+        role="user",
+        original_value="Hello",
+        scorer_identifier=scorer_dict,
+    )
+
+    # Check that scorer_identifier is now a ComponentIdentifier
+    assert isinstance(entry.scorer_identifier, ComponentIdentifier)
+    assert entry.scorer_identifier.class_name == "TestScorer"
+    assert entry.scorer_identifier.class_module == "pyrit.score.test_scorer"
+
+
+def test_message_piece_scorer_identifier_none_default():
+    """Test that scorer_identifier defaults to None when not provided."""
+    entry = MessagePiece(
+        role="user",
+        original_value="Hello",
+    )
+
+    assert entry.scorer_identifier is None
+
+
+def test_message_piece_to_dict_scorer_identifier_none():
+    """Test that to_dict() returns None for scorer_identifier when not set."""
+    entry = MessagePiece(
+        role="user",
+        original_value="Hello",
+    )
+
+    result = entry.to_dict()
+    assert result["scorer_identifier"] is None
 
 
 def test_construct_response_from_request_combines_metadata():
@@ -976,7 +1040,153 @@ class TestSimulatedAssistantRole:
     def test_role_setter_sets_simulated_assistant(self):
         """Test that role setter can set simulated_assistant."""
         piece = MessagePiece(role="assistant", original_value="Hello")
-        piece.role = "simulated_assistant"
+        piece._role = "simulated_assistant"
         assert piece.get_role_for_storage() == "simulated_assistant"
         assert piece.api_role == "assistant"
         assert piece.is_simulated is True
+
+
+def test_set_piece_not_in_database_sets_id_to_none():
+    entry = MessagePiece(
+        role="user",
+        original_value="Hello",
+        converted_value="Hello",
+    )
+    assert entry.id is not None
+    entry.set_piece_not_in_database()
+    assert entry.id is None
+
+
+class TestMessagePieceDeprecationWarnings:
+    """Tests for deprecation warnings on parameters scheduled for removal."""
+
+    def test_scorer_identifier_emits_deprecation_warning(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            MessagePiece(
+                role="user",
+                original_value="Hello",
+                scorer_identifier=ComponentIdentifier(class_name="S", class_module="m"),
+            )
+        deprecation_msgs = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert any("scorer_identifier" in str(m.message) for m in deprecation_msgs)
+
+    def test_scorer_identifier_none_no_warning(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            MessagePiece(role="user", original_value="Hello")
+        deprecation_msgs = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert not any("scorer_identifier" in str(m.message) for m in deprecation_msgs)
+
+    def test_originator_non_default_emits_deprecation_warning(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            MessagePiece(role="user", original_value="Hello", originator="attack")
+        deprecation_msgs = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert any("originator" in str(m.message) for m in deprecation_msgs)
+
+    def test_originator_default_no_warning(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            MessagePiece(role="user", original_value="Hello")
+        deprecation_msgs = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert not any("originator" in str(m.message) for m in deprecation_msgs)
+
+    def test_scores_emits_deprecation_warning(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            MessagePiece(role="user", original_value="Hello", scores=[])
+        # scores=[] is falsy but not None, however the check is `scores is not None`
+        deprecation_msgs = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert any("scores" in str(m.message) for m in deprecation_msgs)
+
+    def test_scores_none_no_warning(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            MessagePiece(role="user", original_value="Hello")
+        deprecation_msgs = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert not any("scores" in str(m.message) for m in deprecation_msgs)
+
+    def test_targeted_harm_categories_emits_deprecation_warning(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            MessagePiece(role="user", original_value="Hello", targeted_harm_categories=["violence"])
+        deprecation_msgs = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert any("targeted_harm_categories" in str(m.message) for m in deprecation_msgs)
+
+    def test_targeted_harm_categories_none_no_warning(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            MessagePiece(role="user", original_value="Hello")
+        deprecation_msgs = [x for x in w if issubclass(x.category, DeprecationWarning)]
+        assert not any("targeted_harm_categories" in str(m.message) for m in deprecation_msgs)
+
+
+class TestCopyLineageFrom:
+    """Tests for MessagePiece.copy_lineage_from."""
+
+    _SOURCE_CONV_ID = "source-conv-id"
+    _SOURCE_LABELS = {"op": "red_team", "run": "42"}
+    _SOURCE_ATTACK_ID = ComponentIdentifier(class_name="TestAttack", class_module="tests")
+    _SOURCE_TARGET_ID = ComponentIdentifier(class_name="OpenAIChatTarget", class_module="pyrit")
+    _SOURCE_METADATA = {"scenario": "jailbreak", "turn": 5}
+
+    def _make_source(self) -> MessagePiece:
+        return MessagePiece(
+            role="user",
+            original_value="source prompt",
+            conversation_id=self._SOURCE_CONV_ID,
+            labels=dict(self._SOURCE_LABELS),
+            attack_identifier=self._SOURCE_ATTACK_ID,
+            prompt_target_identifier=self._SOURCE_TARGET_ID,
+            prompt_metadata=dict(self._SOURCE_METADATA),
+        )
+
+    def _make_target(self) -> MessagePiece:
+        return MessagePiece(
+            role="user",
+            original_value="target prompt",
+        )
+
+    def test_copies_all_lineage_fields(self):
+        source = self._make_source()
+        target = self._make_target()
+
+        target.copy_lineage_from(source)
+
+        assert target.conversation_id == self._SOURCE_CONV_ID
+        assert target.labels == self._SOURCE_LABELS
+        assert target.attack_identifier == self._SOURCE_ATTACK_ID
+        assert target.prompt_target_identifier == self._SOURCE_TARGET_ID
+        assert target.prompt_metadata == self._SOURCE_METADATA
+
+    def test_labels_are_independent_copies(self):
+        source = self._make_source()
+        target = self._make_target()
+
+        target.copy_lineage_from(source)
+
+        target.labels["extra"] = "injected"
+        assert "extra" not in source.labels
+
+    def test_prompt_metadata_are_independent_copies(self):
+        source = self._make_source()
+        target = self._make_target()
+
+        target.copy_lineage_from(source)
+
+        target.prompt_metadata["extra"] = "injected"
+        assert "extra" not in source.prompt_metadata
+
+    def test_does_not_overwrite_non_lineage_fields(self):
+        source = self._make_source()
+        target = self._make_target()
+        original_id = target.id
+        original_role = target._role
+        original_value = target.original_value
+
+        target.copy_lineage_from(source)
+
+        assert target.id == original_id
+        assert target._role == original_role
+        assert target.original_value == original_value

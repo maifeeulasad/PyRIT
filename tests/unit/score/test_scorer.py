@@ -7,8 +7,10 @@ from typing import Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from unit.mocks import get_mock_target_identifier
 
 from pyrit.exceptions import InvalidJsonException, remove_markdown_json
+from pyrit.identifiers import ComponentIdentifier
 from pyrit.memory import CentralMemory
 from pyrit.models import Message, MessagePiece, Score
 from pyrit.prompt_target import PromptChatTarget
@@ -60,9 +62,9 @@ class MockScorer(TrueFalseScorer):
     def __init__(self):
         super().__init__(validator=DummyValidator())
 
-    def _build_scorer_identifier(self) -> None:
+    def _build_identifier(self) -> ComponentIdentifier:
         """Build the scorer evaluation identifier for this mock scorer."""
-        self._set_scorer_identifier()
+        return self._create_identifier()
 
     async def _score_async(self, message: Message, *, objective: Optional[str] = None) -> list[Score]:
         return [
@@ -116,9 +118,9 @@ class MockFloatScorer(Scorer):
         self.scored_piece_ids: list[str] = []
         super().__init__(validator=validator)
 
-    def _build_scorer_identifier(self) -> None:
+    def _build_identifier(self) -> ComponentIdentifier:
         """Build the scorer evaluation identifier for this mock scorer."""
-        self._set_scorer_identifier()
+        return self._create_identifier()
 
     async def _score_piece_async(self, message_piece: MessagePiece, *, objective: Optional[str] = None) -> list[Score]:
         # Track which pieces get scored
@@ -150,6 +152,7 @@ class MockFloatScorer(Scorer):
 @pytest.mark.parametrize("bad_json", [BAD_JSON, KEY_ERROR_JSON, KEY_ERROR2_JSON])
 async def test_scorer_send_chat_target_async_bad_json_exception_retries(bad_json: str):
     chat_target = MagicMock(PromptChatTarget)
+    chat_target.get_identifier.return_value = get_mock_target_identifier("MockChatTarget")
     bad_json_resp = Message(
         message_pieces=[MessagePiece(role="assistant", original_value=bad_json, conversation_id="test-convo")]
     )
@@ -173,6 +176,7 @@ async def test_scorer_send_chat_target_async_bad_json_exception_retries(bad_json
 @pytest.mark.asyncio
 async def test_scorer_score_value_with_llm_exception_display_prompt_id():
     chat_target = MagicMock(PromptChatTarget)
+    chat_target.get_identifier.return_value = get_mock_target_identifier("MockChatTarget")
     chat_target.send_prompt_async = AsyncMock(side_effect=Exception("Test exception"))
 
     scorer = MockScorer()
@@ -197,11 +201,12 @@ async def test_scorer_score_value_with_llm_use_provided_attack_identifier(good_j
         message_pieces=[MessagePiece(role="assistant", original_value=good_json, conversation_id="test-convo")]
     )
     chat_target = MagicMock(PromptChatTarget)
+    chat_target.get_identifier.return_value = get_mock_target_identifier("MockChatTarget")
     chat_target.send_prompt_async = AsyncMock(return_value=[message])
     chat_target.set_system_prompt = MagicMock()
 
     expected_system_prompt = "system_prompt"
-    expected_attack_id = "attack_id"
+    expected_attack_identifier = ComponentIdentifier(class_name="TestAttack", class_module="test.module")
     expected_scored_prompt_id = "123"
 
     await scorer._score_value_with_llm(
@@ -212,7 +217,7 @@ async def test_scorer_score_value_with_llm_use_provided_attack_identifier(good_j
         scored_prompt_id=expected_scored_prompt_id,
         category="category",
         objective="task",
-        attack_identifier={"id": expected_attack_id},
+        attack_identifier=expected_attack_identifier,
     )
 
     chat_target.set_system_prompt.assert_called_once()
@@ -220,8 +225,7 @@ async def test_scorer_score_value_with_llm_use_provided_attack_identifier(good_j
     _, set_sys_prompt_args = chat_target.set_system_prompt.call_args
     assert set_sys_prompt_args["system_prompt"] == expected_system_prompt
     assert isinstance(set_sys_prompt_args["conversation_id"], str)
-    assert set_sys_prompt_args["attack_identifier"]["id"] == expected_attack_id
-    assert set_sys_prompt_args["attack_identifier"]["scored_prompt_id"] == expected_scored_prompt_id
+    assert set_sys_prompt_args["attack_identifier"] is expected_attack_identifier
 
 
 @pytest.mark.asyncio
@@ -232,6 +236,7 @@ async def test_scorer_score_value_with_llm_does_not_add_score_prompt_id_for_empt
         message_pieces=[MessagePiece(role="assistant", original_value=good_json, conversation_id="test-convo")]
     )
     chat_target = MagicMock(PromptChatTarget)
+    chat_target.get_identifier.return_value = get_mock_target_identifier("MockChatTarget")
     chat_target.send_prompt_async = AsyncMock(return_value=[message])
     chat_target.set_system_prompt = MagicMock()
 
@@ -258,6 +263,7 @@ async def test_scorer_score_value_with_llm_does_not_add_score_prompt_id_for_empt
 @pytest.mark.asyncio
 async def test_scorer_send_chat_target_async_good_response(good_json):
     chat_target = MagicMock(PromptChatTarget)
+    chat_target.get_identifier.return_value = get_mock_target_identifier("MockChatTarget")
 
     good_json_resp = Message(
         message_pieces=[MessagePiece(role="assistant", original_value=good_json, conversation_id="test-convo")]
@@ -276,12 +282,13 @@ async def test_scorer_send_chat_target_async_good_response(good_json):
         objective="task",
     )
 
-    assert chat_target.send_prompt_async.call_count == int(1)
+    assert chat_target.send_prompt_async.call_count == 1
 
 
 @pytest.mark.asyncio
 async def test_scorer_remove_markdown_json_called(good_json):
     chat_target = MagicMock(PromptChatTarget)
+    chat_target.get_identifier.return_value = get_mock_target_identifier("MockChatTarget")
     good_json_resp = Message(
         message_pieces=[MessagePiece(role="assistant", original_value=good_json, conversation_id="test-convo")]
     )
@@ -307,6 +314,7 @@ async def test_scorer_remove_markdown_json_called(good_json):
 async def test_score_value_with_llm_prepended_text_message_piece_creates_multipiece_message(good_json):
     """Test that prepended_text_message_piece creates a multi-piece message (text context + main content)."""
     chat_target = MagicMock(PromptChatTarget)
+    chat_target.get_identifier.return_value = get_mock_target_identifier("MockChatTarget")
     good_json_resp = Message(
         message_pieces=[MessagePiece(role="assistant", original_value=good_json, conversation_id="test-convo")]
     )
@@ -350,6 +358,7 @@ async def test_score_value_with_llm_prepended_text_message_piece_creates_multipi
 async def test_score_value_with_llm_no_prepended_text_creates_single_piece_message(good_json):
     """Test that without prepended_text_message_piece, only a single piece message is created."""
     chat_target = MagicMock(PromptChatTarget)
+    chat_target.get_identifier.return_value = get_mock_target_identifier("MockChatTarget")
     good_json_resp = Message(
         message_pieces=[MessagePiece(role="assistant", original_value=good_json, conversation_id="test-convo")]
     )
@@ -385,6 +394,7 @@ async def test_score_value_with_llm_no_prepended_text_creates_single_piece_messa
 async def test_score_value_with_llm_prepended_text_works_with_audio(good_json):
     """Test that prepended_text_message_piece works with audio content (type-independent)."""
     chat_target = MagicMock(PromptChatTarget)
+    chat_target.get_identifier.return_value = get_mock_target_identifier("MockChatTarget")
     good_json_resp = Message(
         message_pieces=[MessagePiece(role="assistant", original_value=good_json, conversation_id="test-convo")]
     )
@@ -479,6 +489,55 @@ async def test_scorer_score_responses_batch_async(patch_central_database):
 
         assert fake_scores[0] in results
         assert len(fake_scores) == 2
+
+
+@pytest.mark.asyncio
+async def test_score_prompts_batch_async_rejects_explicit_empty_objectives():
+    """Test explicit empty objectives are rejected for non-empty message batches."""
+    scorer = MockScorer()
+    message = MessagePiece(role="user", original_value="Hello user", sequence=1).to_message()
+
+    with pytest.raises(ValueError, match="objectives"):
+        await scorer.score_prompts_batch_async(messages=[message], objectives=[])
+
+
+@pytest.mark.asyncio
+async def test_score_image_batch_async_rejects_explicit_empty_objectives():
+    """Test explicit empty objectives are rejected for non-empty image batches."""
+    scorer = MockScorer()
+
+    with pytest.raises(ValueError, match="objectives"):
+        await scorer.score_image_batch_async(image_paths=["test_image.png"], objectives=[])
+
+
+@pytest.mark.asyncio
+async def test_score_prompts_batch_async_defaults_objectives_when_none(patch_central_database):
+    """Test that objectives=None defaults to empty-string objectives matching message count."""
+    scorer = MockScorer()
+
+    with patch.object(scorer, "score_async", new_callable=AsyncMock) as mock_score_async:
+        mock_score_async.return_value = [MagicMock()]
+        message = MessagePiece(role="user", original_value="Hello user", sequence=1).to_message()
+
+        await scorer.score_prompts_batch_async(messages=[message])
+
+        _, call_kwargs = mock_score_async.call_args
+        assert call_kwargs["objective"] == ""
+
+
+@pytest.mark.asyncio
+async def test_score_image_batch_async_works_when_objectives_none(patch_central_database):
+    """Test that objectives=None omits objectives from the batch call."""
+    scorer = MockScorer()
+
+    with patch.object(scorer, "score_image_async", new_callable=AsyncMock) as mock_score_image:
+        mock_score_image.return_value = [MagicMock()]
+
+        await scorer.score_image_batch_async(image_paths=["test.png"])
+
+        mock_score_image.assert_called_once()
+        _, call_kwargs = mock_score_image.call_args
+        assert "objective" not in call_kwargs
 
 
 @pytest.mark.asyncio
@@ -819,9 +878,9 @@ async def test_score_response_async_multiple_pieces():
 
     # The following commented-out lines should be uncommented when the permanent solution is implemented
     # # Should have all auxiliary scores
-    # assert len(result["auxiliary_scores"]) == 4
-    # for score in aux_scores:
-    #     assert score in result["auxiliary_scores"]
+    # assert len(result["auxiliary_scores"]) == 4  # noqa: ERA001
+    # for score in aux_scores:  # noqa: ERA001
+    #     assert score in result["auxiliary_scores"]  # noqa: ERA001
 
     # Should have only one objective score (first success)
     assert len(result["objective_scores"]) == 1
@@ -899,13 +958,13 @@ async def test_score_response_async_skip_on_error_false():
     assert len(result["auxiliary_scores"]) == 1
     # The following commented-out lines should be uncommented when the permanent solution is implemented
     # # Should score both pieces for auxiliary
-    # assert len(result["auxiliary_scores"]) == 2
+    # assert len(result["auxiliary_scores"]) == 2  # noqa: ERA001
 
     # But only one objective score (first success)
     assert len(result["objective_scores"]) == 1
 
     # # Verify both pieces were scored for auxiliary
-    # assert aux_scorer.score_async.call_count == 2
+    # assert aux_scorer.score_async.call_count == 2  # noqa: ERA001
 
 
 @pytest.mark.asyncio
@@ -1118,9 +1177,9 @@ async def test_true_false_scorer_uses_supported_pieces_only(patch_central_databa
             self.scored_piece_ids = []
             super().__init__(validator=validator)
 
-        def _build_scorer_identifier(self) -> None:
+        def _build_identifier(self) -> ComponentIdentifier:
             """Build the scorer evaluation identifier for this test scorer."""
-            self._set_scorer_identifier()
+            return self._create_identifier()
 
         async def _score_piece_async(
             self, message_piece: MessagePiece, *, objective: Optional[str] = None
@@ -1205,26 +1264,25 @@ async def test_base_scorer_score_async_implementation(patch_central_database):
     assert len(scores) == 2
 
 
-# Tests for get_identifier and scorer_identifier
+# Tests for get_identifier and identifier
 
 
 def test_mock_scorer_get_identifier_returns_type():
-    """Test that get_identifier returns the correct __type__ key."""
+    """Test that get_identifier returns a ComponentIdentifier with the correct class_name."""
     scorer = MockScorer()
     identifier = scorer.get_identifier()
 
-    assert "__type__" in identifier
-    assert identifier["__type__"] == "MockScorer"
+    assert identifier.class_name == "MockScorer"
 
 
 def test_mock_scorer_get_identifier_includes_hash():
-    """Test that get_identifier includes a hash field."""
+    """Test that get_identifier returns a ComponentIdentifier with a hash field."""
     scorer = MockScorer()
     identifier = scorer.get_identifier()
 
-    assert "hash" in identifier
-    assert isinstance(identifier["hash"], str)
-    assert len(identifier["hash"]) == 64  # SHA256 hex digest length
+    assert hasattr(identifier, "hash")
+    assert isinstance(identifier.hash, str)
+    assert len(identifier.hash) == 64  # SHA256 hex digest length
 
 
 def test_mock_scorer_get_identifier_deterministic():
@@ -1241,33 +1299,31 @@ def test_mock_scorer_get_identifier_hash_deterministic():
     """Test that the hash is consistent across multiple calls."""
     scorer = MockScorer()
 
-    hash1 = scorer.get_identifier()["hash"]
-    hash2 = scorer.get_identifier()["hash"]
+    hash1 = scorer.get_identifier().hash
+    hash2 = scorer.get_identifier().hash
 
     assert hash1 == hash2
 
 
-def test_mock_scorer_scorer_identifier_property():
-    """Test that scorer_identifier property returns a ScorerIdentifier."""
-    from pyrit.score.scorer_identifier import ScorerIdentifier
-
+def test_mock_scorer_get_identifier_is_component_identifier():
+    """Test that get_identifier returns a ComponentIdentifier."""
     scorer = MockScorer()
-    sid = scorer.scorer_identifier
+    sid = scorer.get_identifier()
 
-    assert isinstance(sid, ScorerIdentifier)
-    assert sid.type == "MockScorer"
+    assert isinstance(sid, ComponentIdentifier)
+    assert sid.class_name == "MockScorer"
 
 
-def test_mock_scorer_scorer_identifier_lazy_build():
-    """Test that scorer_identifier is built lazily on first access."""
+def test_mock_scorer_identifier_lazy_build():
+    """Test that identifier is built lazily on first access."""
     scorer = MockScorer()
 
-    # Before accessing, _scorer_identifier should be None
-    assert scorer._scorer_identifier is None
+    # Before accessing, _identifier should be None
+    assert scorer._identifier is None
 
-    # After accessing, it should be built
-    _ = scorer.scorer_identifier
-    assert scorer._scorer_identifier is not None
+    # After accessing via get_identifier(), it should be built
+    _ = scorer.get_identifier()
+    assert scorer._identifier is not None
 
 
 def test_mock_float_scorer_get_identifier():
@@ -1277,8 +1333,8 @@ def test_mock_float_scorer_get_identifier():
 
     identifier = scorer.get_identifier()
 
-    assert identifier["__type__"] == "MockFloatScorer"
-    assert "hash" in identifier
+    assert identifier.class_name == "MockFloatScorer"
+    assert hasattr(identifier, "hash")
 
 
 class TestTrueFalseScorerEmptyScoreListRationale:
@@ -1306,8 +1362,8 @@ class TestTrueFalseScorerEmptyScoreListRationale:
             def __init__(self, validator):
                 super().__init__(validator=validator)
 
-            def _build_scorer_identifier(self) -> None:
-                self._set_scorer_identifier()
+            def _build_identifier(self) -> ComponentIdentifier:
+                return self._create_identifier()
 
             async def _score_piece_async(
                 self, message_piece: MessagePiece, *, objective: Optional[str] = None
@@ -1412,3 +1468,42 @@ class TestTrueFalseScorerEmptyScoreListRationale:
         assert "blocked" in scores[0].score_rationale.lower()
         # The description should also mention blocked, not just "error"
         assert "blocked" in scores[0].score_value_description.lower()
+
+
+@pytest.mark.asyncio
+async def test_score_value_with_llm_skips_reasoning_piece(good_json):
+    """Test that _score_value_with_llm extracts JSON from the text piece, not a reasoning piece."""
+    chat_target = MagicMock(PromptChatTarget)
+    chat_target.get_identifier.return_value = get_mock_target_identifier("MockChatTarget")
+
+    # Simulate a reasoning model response: first piece is reasoning, second is the actual text with JSON
+    reasoning_piece = MessagePiece(
+        role="assistant",
+        original_value="Let me think about this...",
+        original_value_data_type="reasoning",
+        converted_value="Let me think about this...",
+        converted_value_data_type="reasoning",
+        conversation_id="test-convo",
+    )
+    text_piece = MessagePiece(
+        role="assistant",
+        original_value=good_json,
+        conversation_id="test-convo",
+    )
+    response_message = Message(message_pieces=[reasoning_piece, text_piece])
+    chat_target.send_prompt_async = AsyncMock(return_value=[response_message])
+
+    scorer = MockScorer()
+
+    result = await scorer._score_value_with_llm(
+        prompt_target=chat_target,
+        system_prompt="system_prompt",
+        message_value="message_value",
+        message_data_type="text",
+        scored_prompt_id="123",
+        category="category",
+        objective="task",
+    )
+
+    assert result.raw_score_value == "1"
+    assert result.score_rationale == "Valid response"

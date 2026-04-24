@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from unit.mocks import get_mock_scorer_identifier, get_mock_target_identifier
 
 from pyrit.executor.attack import (
     AttackConverterConfig,
@@ -31,7 +32,7 @@ def mock_target():
     """Create a mock prompt target for testing"""
     target = MagicMock(spec=PromptTarget)
     target.send_prompt_async = AsyncMock()
-    target.get_identifier.return_value = {"id": "mock_target_id"}
+    target.get_identifier.return_value = get_mock_target_identifier("MockTarget")
     return target
 
 
@@ -40,6 +41,7 @@ def mock_true_false_scorer():
     """Create a mock true/false scorer for testing"""
     scorer = MagicMock(spec=TrueFalseScorer)
     scorer.score_text_async = AsyncMock()
+    scorer.get_identifier.return_value = get_mock_scorer_identifier()
     return scorer
 
 
@@ -93,6 +95,7 @@ def success_score():
         score_rationale="Test rationale for success",
         score_metadata={},
         message_piece_id=str(uuid.uuid4()),
+        scorer_class_identifier=get_mock_scorer_identifier(),
     )
 
 
@@ -107,6 +110,7 @@ def failure_score():
         score_rationale="Test rationale for failure",
         score_metadata={},
         message_piece_id=str(uuid.uuid4()),
+        scorer_class_identifier=get_mock_scorer_identifier(),
     )
 
 
@@ -315,7 +319,7 @@ class TestSkeletonKeyFailureResult:
         assert result.executed_turns == 1
         assert result.last_response is None
         assert result.last_score is None
-        assert result.attack_identifier == attack.get_identifier()
+        assert result.get_attack_strategy_identifier() == attack.get_identifier()
 
 
 @pytest.mark.usefixtures("patch_central_database")
@@ -343,7 +347,6 @@ class TestSkeletonKeyAttackExecution:
                 mock_parent.return_value = AttackResult(
                     conversation_id=basic_context.conversation_id,
                     objective=basic_context.objective,
-                    attack_identifier=attack.get_identifier(),
                     last_response=sample_response,
                     last_score=success_score,
                     outcome=AttackOutcome.SUCCESS,
@@ -375,7 +378,6 @@ class TestSkeletonKeyAttackExecution:
                 expected_result = AttackResult(
                     conversation_id=basic_context.conversation_id,
                     objective=basic_context.objective,
-                    attack_identifier=attack.get_identifier(),
                     outcome=AttackOutcome.FAILURE,
                     outcome_reason="Skeleton key prompt was filtered or failed",
                     executed_turns=1,
@@ -412,7 +414,6 @@ class TestSkeletonKeyAttackExecution:
                 mock_parent.return_value = AttackResult(
                     conversation_id=basic_context.conversation_id,
                     objective=basic_context.objective,
-                    attack_identifier=attack.get_identifier(),
                     last_response=sample_response,
                     last_score=failure_score,
                     outcome=AttackOutcome.FAILURE,

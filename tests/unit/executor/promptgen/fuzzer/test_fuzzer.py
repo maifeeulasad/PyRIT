@@ -5,7 +5,7 @@ import pathlib
 from unittest.mock import MagicMock, patch
 
 import pytest
-from unit.mocks import MockPromptTarget
+from unit.mocks import MockPromptTarget, get_mock_scorer_identifier
 
 from pyrit.common.path import DATASETS_PATH
 from pyrit.datasets import TextJailBreak
@@ -72,8 +72,7 @@ class TestFuzzerGenerator:
     @pytest.fixture
     def mock_scorer(self) -> MagicMock:
         """Mock scorer for testing."""
-        scorer = MagicMock(TrueFalseScorer)
-        return scorer
+        return MagicMock(TrueFalseScorer)
 
     @pytest.fixture
     def fuzzer_context(self, simple_prompts: list[str], simple_prompt_templates: list[str]) -> FuzzerContext:
@@ -271,6 +270,7 @@ class TestFuzzerGenerator:
             score_rationale="",
             score_metadata={},
             message_piece_id="",
+            scorer_class_identifier=get_mock_scorer_identifier(),
         )
         assert generator._is_jailbreak(true_score) is True
 
@@ -283,6 +283,7 @@ class TestFuzzerGenerator:
             score_rationale="",
             score_metadata={},
             message_piece_id="",
+            scorer_class_identifier=get_mock_scorer_identifier(),
         )
         assert generator._is_jailbreak(false_score) is False
 
@@ -308,6 +309,7 @@ class TestFuzzerGenerator:
             score_rationale="",
             score_metadata={},
             message_piece_id="",
+            scorer_class_identifier=get_mock_scorer_identifier(),
         )
         assert generator._is_jailbreak(high_score) is True
 
@@ -320,6 +322,7 @@ class TestFuzzerGenerator:
             score_rationale="",
             score_metadata={},
             message_piece_id="",
+            scorer_class_identifier=get_mock_scorer_identifier(),
         )
         assert generator._is_jailbreak(low_score) is False
 
@@ -485,3 +488,22 @@ class TestPromptNode:
         assert len(root.children) == 1
         assert len(level1.children) == 1
         assert len(level2.children) == 0
+
+
+def test_create_normalizer_requests_raises_when_seed_group_message_none():
+    """Test that _create_normalizer_requests raises ValueError when seed_group.next_message is None."""
+    from unittest.mock import PropertyMock
+
+    from pyrit.executor.promptgen.fuzzer.fuzzer import FuzzerGenerator
+
+    generator = FuzzerGenerator.__new__(FuzzerGenerator)
+    generator._request_converters = []
+    generator._response_converters = []
+
+    with patch("pyrit.executor.promptgen.fuzzer.fuzzer.SeedGroup") as mock_seed_group:
+        mock_instance = MagicMock()
+        type(mock_instance).next_message = PropertyMock(return_value=None)
+        mock_seed_group.return_value = mock_instance
+
+        with pytest.raises(ValueError, match="No message in seed group"):
+            generator._create_normalizer_requests(["test prompt"])
