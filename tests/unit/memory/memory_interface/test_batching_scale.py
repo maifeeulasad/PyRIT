@@ -12,6 +12,7 @@ import uuid
 from unittest.mock import patch
 
 from pyrit.memory import MemoryInterface
+from pyrit.memory.memory_models import PromptMemoryEntry
 from pyrit.models import AttackResult, MessagePiece, Score
 
 # Use the class attribute for the batch limit in tests
@@ -561,8 +562,6 @@ class TestEffectiveBatchSize:
         num_pieces = 100
         pieces = [_create_message_piece() for _ in range(num_pieces)]
         sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
-
-        from pyrit.memory.memory_models import PromptMemoryEntry
 
         original_query = sqlite_instance._query_entries
         call_count = 0
