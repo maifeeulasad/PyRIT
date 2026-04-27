@@ -101,7 +101,7 @@ class _SorryBenchDataset(_RemoteDatasetLoader):
         categories: Optional[list[str]] = None,
         prompt_style: Optional[str] = None,
         token: Optional[str] = None,
-    ):
+    ) -> None:
         """
         Initialize the Sorry-Bench dataset loader.
 

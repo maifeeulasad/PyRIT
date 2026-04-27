@@ -250,7 +250,7 @@ class RedTeamAgent(Scenario):
         attack_scoring_config: Optional[AttackScoringConfig] = None,
         include_baseline: bool = True,
         scenario_result_id: Optional[str] = None,
-    ):
+    ) -> None:
         """
         Initialize a Foundry Scenario with the specified attack strategies.
 

@@ -221,7 +221,7 @@ class PromptMemoryEntry(Base):
         foreign_keys="ScoreEntry.prompt_request_response_id",
     )
 
-    def __init__(self, *, entry: MessagePiece):
+    def __init__(self, *, entry: MessagePiece) -> None:
         """
         Initialize a PromptMemoryEntry from a MessagePiece.
 
@@ -387,7 +387,7 @@ class ScoreEntry(Base):
     pyrit_version = mapped_column(String, nullable=True)
     prompt_request_piece: Mapped["PromptMemoryEntry"] = relationship("PromptMemoryEntry", back_populates="scores")
 
-    def __init__(self, *, entry: Score):
+    def __init__(self, *, entry: Score) -> None:
         """
         Initialize a ScoreEntry from a Score object.
 
@@ -565,7 +565,7 @@ class SeedEntry(Base):
     role: Mapped[ChatMessageRole] = mapped_column(String, nullable=True)
     seed_type: Mapped[SeedType] = mapped_column(String, nullable=False, default="prompt")
 
-    def __init__(self, *, entry: Seed):
+    def __init__(self, *, entry: Seed) -> None:
         """
         Initialize a SeedEntry from a Seed object.
 
@@ -744,7 +744,7 @@ class AttackResultEntry(Base):
         foreign_keys=[last_score_id],
     )
 
-    def __init__(self, *, entry: AttackResult):
+    def __init__(self, *, entry: AttackResult) -> None:
         """
         Initialize an AttackResultEntry from an AttackResult object.
 
@@ -955,7 +955,7 @@ class ScenarioResultEntry(Base):
     completion_time = mapped_column(DateTime, nullable=False)
     timestamp = mapped_column(DateTime, nullable=False)
 
-    def __init__(self, *, entry: ScenarioResult):
+    def __init__(self, *, entry: ScenarioResult) -> None:
         """
         Initialize a ScenarioResultEntry from a ScenarioResult object.
 

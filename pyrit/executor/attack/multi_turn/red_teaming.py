@@ -96,7 +96,7 @@ class RedTeamingAttack(MultiTurnAttackStrategy[MultiTurnAttackContext[Any], Atta
         prompt_normalizer: Optional[PromptNormalizer] = None,
         max_turns: int = 10,
         score_last_turn_only: bool = False,
-    ):
+    ) -> None:
         """
         Initialize the red teaming attack strategy.
 

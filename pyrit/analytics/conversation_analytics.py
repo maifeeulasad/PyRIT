@@ -16,7 +16,7 @@ class ConversationAnalytics:
     based on conversation history or embedding similarity.
     """
 
-    def __init__(self, *, memory_interface: MemoryInterface):
+    def __init__(self, *, memory_interface: MemoryInterface) -> None:
         """
         Initialize the ConversationAnalytics with a memory interface for data access.
 

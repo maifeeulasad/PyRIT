@@ -18,7 +18,7 @@ class MarkdownAttackResultPrinter(AttackResultPrinter):
     markdown formatting that should be properly rendered.
     """
 
-    def __init__(self, *, display_inline: bool = True):
+    def __init__(self, *, display_inline: bool = True) -> None:
         """
         Initialize the markdown printer.
 

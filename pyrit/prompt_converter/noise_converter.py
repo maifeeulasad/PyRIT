@@ -31,7 +31,7 @@ class NoiseConverter(LLMGenericTextConverter):
         noise: Optional[str] = None,
         number_errors: int = 5,
         prompt_template: Optional[SeedPrompt] = None,
-    ):
+    ) -> None:
         """
         Initialize the converter with the specified parameters.
 

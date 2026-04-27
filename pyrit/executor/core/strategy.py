@@ -150,7 +150,7 @@ class Strategy(ABC, Generic[StrategyContextT, StrategyResultT]):
         context_type: type[StrategyContextT],
         event_handler: Optional[StrategyEventHandler[StrategyContextT, StrategyResultT]] = None,
         logger: logging.Logger = logger,
-    ):
+    ) -> None:
         """
         Initialize the strategy with a context type and logger.
 

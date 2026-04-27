@@ -60,7 +60,7 @@ class SQLiteMemory(MemoryInterface, metaclass=Singleton):
         *,
         db_path: Optional[Union[Path, str]] = None,
         verbose: bool = False,
-    ):
+    ) -> None:
         """
         Initialize the SQLiteMemory instance.
 

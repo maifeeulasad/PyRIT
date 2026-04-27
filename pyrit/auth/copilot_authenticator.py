@@ -56,7 +56,7 @@ class CopilotAuthenticator(Authenticator):
         token_capture_timeout_seconds: int = DEFAULT_TOKEN_CAPTURE_TIMEOUT,
         network_retries: int = DEFAULT_NETWORK_RETRIES,
         fallback_to_plaintext: bool = False,
-    ):
+    ) -> None:
         """
         Initialize the CopilotAuthenticator.
 

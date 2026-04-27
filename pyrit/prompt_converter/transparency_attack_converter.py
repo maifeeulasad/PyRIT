@@ -30,7 +30,7 @@ class _AdamOptimizer:
 
     def __init__(
         self, *, learning_rate: float = 0.001, beta_1: float = 0.9, beta_2: float = 0.999, epsilon: float = 1e-8
-    ):
+    ) -> None:
         """
         Initialize the Adam optimizer with specified hyperparameters.
 
@@ -133,7 +133,7 @@ class TransparencyAttackConverter(PromptConverter):
         learning_rate: float = 0.001,
         convergence_threshold: float = 1e-6,
         convergence_patience: int = 10,
-    ):
+    ) -> None:
         """
         Initialize the converter with the path to a benign image and parameters for blending.
 

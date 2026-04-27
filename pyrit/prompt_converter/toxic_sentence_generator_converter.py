@@ -36,7 +36,7 @@ class ToxicSentenceGeneratorConverter(LLMGenericTextConverter):
         *,
         converter_target: PromptChatTarget = REQUIRED_VALUE,  # type: ignore[assignment]
         prompt_template: Optional[SeedPrompt] = None,
-    ):
+    ) -> None:
         """
         Initialize the converter with a specific target and template.
 

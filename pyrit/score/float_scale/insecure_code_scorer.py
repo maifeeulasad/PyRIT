@@ -28,7 +28,7 @@ class InsecureCodeScorer(FloatScaleScorer):
         chat_target: PromptChatTarget,
         system_prompt_path: Optional[Union[str, Path]] = None,
         validator: Optional[ScorerPromptValidator] = None,
-    ):
+    ) -> None:
         """
         Initialize the Insecure Code Scorer.
 

@@ -28,7 +28,7 @@ class _RedTeamSocialBiasDataset(_RemoteDatasetLoader):
         self,
         *,
         source: str = "svannie678/red_team_repo_social_bias_prompts",
-    ):
+    ) -> None:
         """
         Initialize the Red Team Social Bias dataset loader.
 

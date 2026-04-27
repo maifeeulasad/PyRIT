@@ -44,7 +44,14 @@ class TrueFalseQuestion:
     This is sent to an LLM and can be used as an alternative to a yaml file from TrueFalseQuestionPaths.
     """
 
-    def __init__(self, *, true_description: str, false_description: str = "", category: str = "", metadata: str = ""):
+    def __init__(
+        self,
+        *,
+        true_description: str,
+        false_description: str = "",
+        category: str = "",
+        metadata: str = "",
+    ) -> None:
         """
         Initialize a TrueFalseQuestion instance.
 

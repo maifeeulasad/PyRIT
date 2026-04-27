@@ -42,7 +42,7 @@ class AddImageVideoConverter(PromptConverter):
         output_path: Optional[str] = None,
         img_position: tuple[int, int] = (10, 10),
         img_resize_size: tuple[int, int] = (500, 500),
-    ):
+    ) -> None:
         """
         Initialize the converter with the video path and image properties.
 

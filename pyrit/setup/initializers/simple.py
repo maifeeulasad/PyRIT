@@ -9,6 +9,7 @@ simple configuration including converters, scorers, and targets using basic Open
 """
 
 import os
+from collections.abc import Awaitable, Callable
 
 from pyrit.common.apply_defaults import set_default_value, set_global_variable
 from pyrit.executor.attack import (
@@ -83,7 +84,7 @@ class SimpleInitializer(PyRITInitializer):
             "OPENAI_CHAT_MODEL",
         ]
 
-    def _get_api_key(self):  # type: ignore[no-untyped-def]
+    def _get_api_key(self) -> str | Callable[[], Awaitable[str]]:  # type: ignore[no-untyped-def]
         """
         Get the API key or Entra auth token provider.
 

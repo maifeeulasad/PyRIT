@@ -77,7 +77,7 @@ class MultiTurnAttackStrategy(AttackStrategy[MultiTurnAttackStrategyContextT, At
         context_type: type[MultiTurnAttackStrategyContextT],
         params_type: type[AttackParamsT] = AttackParameters,  # type: ignore[assignment]
         logger: logging.Logger = logger,
-    ):
+    ) -> None:
         """
         Implement the base class for multi-turn attack strategies.
 

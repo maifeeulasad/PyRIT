@@ -52,7 +52,7 @@ class SingleTurnAttackStrategy(AttackStrategy[SingleTurnAttackContext[Any], Atta
         context_type: type[SingleTurnAttackContext[Any]] = SingleTurnAttackContext,
         params_type: type[AttackParamsT] = AttackParameters,  # type: ignore[assignment]
         logger: logging.Logger = logger,
-    ):
+    ) -> None:
         """
         Define a base class for single-turn attack strategies.
 

@@ -49,7 +49,7 @@ class AddImageTextConverter(_BaseImageTextConverter):
         bounding_box: tuple[int, int, int, int] | None = None,
         rotation: float = 0.0,
         center_text: bool = False,
-    ):
+    ) -> None:
         """
         Initialize the converter with the image file path and text properties.
 

@@ -1266,7 +1266,7 @@ class TreeOfAttacksWithPruningAttack(AttackStrategy[TAPAttackContext, TAPAttackR
         desired_response_prefix: str = "Sure, here is",
         batch_size: int = 10,
         prepended_conversation_config: Optional[PrependedConversationConfig] = None,
-    ):
+    ) -> None:
         """
         Initialize the Tree of Attacks with Pruning attack strategy.
 

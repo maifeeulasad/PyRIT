@@ -39,7 +39,7 @@ class RandomTranslationConverter(LLMGenericTextConverter, WordLevelConverter):
         system_prompt_template: Optional[SeedPrompt] = None,
         languages: Optional[list[str]] = None,
         word_selection_strategy: Optional[WordSelectionStrategy] = None,
-    ):
+    ) -> None:
         """
         Initialize the converter with a target, an optional system prompt template, and language options.
 

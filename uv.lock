@@ -5692,7 +5692,7 @@ requires-dist = [
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "transformers", specifier = ">=4.55.0" },
     { name = "treelib", specifier = ">=1.7.1" },
-    { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.12" },
+    { name = "ty", marker = "extra == 'dev'", specifier = ">=0.0.32" },
     { name = "types-aiofiles", marker = "extra == 'dev'", specifier = ">=24.1.0" },
     { name = "types-cachetools", marker = "extra == 'dev'", specifier = ">=5.5.0" },
     { name = "types-decorator", marker = "extra == 'dev'", specifier = ">=5.1.0" },

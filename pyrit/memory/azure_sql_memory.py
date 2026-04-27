@@ -65,7 +65,7 @@ class AzureSQLMemory(MemoryInterface, metaclass=Singleton):
         results_container_url: Optional[str] = None,
         results_sas_token: Optional[str] = None,
         verbose: bool = False,
-    ):
+    ) -> None:
         """
         Initialize an Azure SQL Memory backend.
 

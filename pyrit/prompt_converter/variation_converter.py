@@ -42,7 +42,7 @@ class VariationConverter(PromptConverter):
         *,
         converter_target: PromptChatTarget = REQUIRED_VALUE,  # type: ignore[assignment]
         prompt_template: Optional[SeedPrompt] = None,
-    ):
+    ) -> None:
         """
         Initialize the converter with the specified target and prompt template.
 

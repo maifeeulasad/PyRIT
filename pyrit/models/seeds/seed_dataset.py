@@ -102,7 +102,7 @@ class SeedDataset(YamlLoadable):
         added_by: Optional[str] = None,
         seed_type: Optional[SeedType] = None,
         is_jinja_template: bool = False,
-    ):
+    ) -> None:
         """
         Initialize the dataset.
         Typically, you'll call from_dict or from_yaml_file so that top-level defaults

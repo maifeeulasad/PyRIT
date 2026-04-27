@@ -29,7 +29,7 @@ class _JBBBehaviorsDataset(_RemoteDatasetLoader):
         *,
         source: str = "JailbreakBench/JBB-Behaviors",
         split: str = "behaviors",
-    ):
+    ) -> None:
         """
         Initialize the JBB-Behaviors dataset loader.
 

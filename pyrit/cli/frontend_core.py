@@ -91,7 +91,7 @@ class FrontendCore:
         initializer_names: Optional[list[Any]] = None,
         env_files: Optional[list[Path]] = None,
         log_level: Optional[int] = None,
-    ):
+    ) -> None:
         """
         Initialize PyRIT context.
 

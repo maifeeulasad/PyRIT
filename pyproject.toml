@@ -79,7 +79,7 @@ dev = [
     "jupyter-book>=2.0.0",
     "jupytext>=1.17.1",
     "matplotlib>=3.10.0",
-    "ty>=0.0.12",
+    "ty>=0.0.32",
     "mock-alchemy>=0.2.6",
     "pandas>=2.2.0",
     "pre-commit>=4.2.0",
@@ -168,13 +168,42 @@ asyncio_mode = "auto"
 
 [tool.ty]
 [tool.ty.rules]
+all = "error"
+# Suppress errors for missing third-party stubs (same as mypy ignore_missing_imports)
 unresolved-import = "ignore"
+# Tolerate None attribute access (same as mypy strict_optional=false)
 possibly-missing-attribute = "ignore"
-unused-ignore-comment = "ignore"
+# Allow existing type: ignore comments without matching errors
+unused-ignore-comment = "warn"
+# Allow empty function bodies during development (same as mypy disable_error_code=["empty-body"])
+empty-body = "ignore"
+# Suppress sentinel default pattern false positives (REQUIRED_VALUE, _UNSET)
+# ty doesn't recognize mypy's # type: ignore[assignment] on these
+invalid-parameter-default = "warn"
+
 [tool.ty.analysis]
 respect-type-ignore-comments = true
+
 [tool.ty.src]
 exclude = ["doc/code/", "pyrit/auxiliary_attacks/"]
+
+# Relax type checking for HuggingFace module (equivalent to mypy [[tool.mypy.overrides]])
+[[tool.ty.overrides]]
+include = ["pyrit/prompt_target/hugging_face/**"]
+[tool.ty.overrides.rules]
+invalid-argument-type = "warn"
+
+# Downgrade false-positive-heavy rules in printer/fuzzer files
+# These files pass mypy strict but trigger ty false positives (~53% spec conformance)
+[[tool.ty.overrides]]
+include = [
+    "pyrit/executor/attack/printer/**",
+    "pyrit/executor/promptgen/fuzzer/**",
+    "pyrit/scenario/printer/**",
+    "pyrit/score/printer/**",
+]
+[tool.ty.overrides.rules]
+invalid-argument-type = "warn"
 
 [tool.uv]
 constraint-dependencies = [
@@ -292,8 +321,10 @@ select = [
     "UP",  # https://docs.astral.sh/ruff/rules/#pyupgrade-up
     "W",  # https://docs.astral.sh/ruff/rules/#pycodestyle-w
     "YTT",  # https://docs.astral.sh/ruff/rules/#flake8-2020-ytt
+    "ANN",  # https://docs.astral.sh/ruff/rules/#flake8-annotations-ann (replaces mypy disallow-untyped-defs)
 ]
 ignore = [
+    "ANN401",  # any-type (too strict — many legitimate uses of Any)
     "B903",  # class-as-data-structure (test helper classes use @apply_defaults pattern)
     "D100",  # Missing docstring in public module
     "D200",  # One-line docstring should fit on one line
@@ -331,7 +362,7 @@ notice-rgx = "Copyright \\(c\\) Microsoft Corporation\\.\\s*\\n.*Licensed under 
 # ERA001: jupytext markdown cells look like commented-out code
 # LOG: notebooks use root logger for convenience
 # PLE1142: top-level await is valid in Jupyter notebooks
-"doc/**" = ["CPY001", "TCH", "E402", "E501", "PGH003", "A", "ERA001", "LOG", "PLE1142"]
+"doc/**" = ["ANN", "CPY001", "TCH", "E402", "E501", "PGH003", "A", "ERA001", "LOG", "PLE1142"]
 "pyrit/{auxiliary_attacks,ui}/**/*.py" = ["B905", "D101", "D102", "D103", "D104", "D105", "D106", "D107", "D401", "D404", "D417", "D418", "DOC102", "DOC201", "DOC202", "DOC402", "DOC501", "N", "PERF", "SIM101", "SIM108"]
 # Backend API routes raise HTTPException handled by FastAPI, not true exceptions
 "pyrit/backend/**/*.py" = ["DOC501", "B008"]
@@ -341,7 +372,7 @@ notice-rgx = "Copyright \\(c\\) Microsoft Corporation\\.\\s*\\n.*Licensed under 
 "pyrit/ui/**/*.py" = ["D", "DOC201", "DOC501"]
 "pyrit/__init__.py" = ["D104"]
 # Allow broad pytest.raises(Exception) in tests
-"tests/**/*.py" = ["B017"]
+"tests/**/*.py" = ["ANN", "B017"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

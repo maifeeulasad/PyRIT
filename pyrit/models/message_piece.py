@@ -54,7 +54,7 @@ class MessagePiece:
         timestamp: Optional[datetime] = None,
         scores: Optional[list[Score]] = None,
         targeted_harm_categories: Optional[list[str]] = None,
-    ):
+    ) -> None:
         """
         Initialize a MessagePiece.
 

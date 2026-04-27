@@ -42,7 +42,7 @@ class FuzzerConverter(PromptConverter):
         *,
         converter_target: PromptChatTarget = REQUIRED_VALUE,  # type: ignore[assignment]
         prompt_template: SeedPrompt,
-    ):
+    ) -> None:
         """
         Initialize the converter with the specified chat target and prompt template.
 

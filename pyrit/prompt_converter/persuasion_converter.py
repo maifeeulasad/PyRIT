@@ -54,7 +54,7 @@ class PersuasionConverter(PromptConverter):
         *,
         converter_target: PromptChatTarget = REQUIRED_VALUE,  # type: ignore[assignment]
         persuasion_technique: str,
-    ):
+    ) -> None:
         """
         Initialize the converter with the specified target and prompt template.
 

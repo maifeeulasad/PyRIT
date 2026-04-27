@@ -207,7 +207,7 @@ class Psychosocial(Scenario):
         scenario_result_id: Optional[str] = None,
         subharm_configs: Optional[dict[str, SubharmConfig]] = None,
         max_turns: int = 5,
-    ):
+    ) -> None:
         """
         Initialize the Psychosocial Harms Scenario.
 

@@ -186,7 +186,7 @@ class ConversationManager:
         *,
         attack_identifier: ComponentIdentifier,
         prompt_normalizer: Optional[PromptNormalizer] = None,
-    ):
+    ) -> None:
         """
         Initialize the conversation manager.
 

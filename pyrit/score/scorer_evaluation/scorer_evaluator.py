@@ -82,7 +82,7 @@ class ScorerEvaluator(abc.ABC):
     # Subclasses must define the expected metrics type
     expected_metrics_type: MetricsType
 
-    def __init__(self, scorer: Scorer):
+    def __init__(self, scorer: Scorer) -> None:
         """
         Initialize the ScorerEvaluator with a scorer.
 
