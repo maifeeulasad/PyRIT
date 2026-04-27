@@ -26,7 +26,7 @@ class TenseConverter(LLMGenericTextConverter):
     def __init__(
         self,
         *,
-        converter_target: PromptChatTarget = REQUIRED_VALUE,  # type: ignore[assignment]
+        converter_target: PromptChatTarget = REQUIRED_VALUE,  # type: ignore[ty:invalid-assignment, ty:invalid-parameter-default]
         tense: str,
         prompt_template: Optional[SeedPrompt] = None,
     ) -> None:

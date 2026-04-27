@@ -326,7 +326,7 @@ def get_azure_token_provider(scope: str) -> Callable[[], str]:
         raise
 
 
-def get_azure_async_token_provider(scope: str) -> Callable[[], Awaitable[str]]:  # type: ignore[no-untyped-def]
+def get_azure_async_token_provider(scope: str) -> Callable[[], Awaitable[str]]:
     """
     Get an asynchronous Azure token provider using AsyncDefaultAzureCredential.
 
@@ -370,7 +370,7 @@ def get_default_azure_scope(endpoint: str) -> str:
     return "https://cognitiveservices.azure.com/.default"
 
 
-def get_azure_openai_auth(endpoint: str) -> Callable[[], Awaitable[str]]:  # type: ignore[no-untyped-def]
+def get_azure_openai_auth(endpoint: str) -> Callable[[], Awaitable[str]]:
     """
     Get an async Azure token provider for OpenAI endpoints.
 

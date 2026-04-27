@@ -293,7 +293,7 @@ class RealtimeTarget(OpenAITarget, PromptChatTarget):
         }
 
         if self.voice:
-            session_config["audio"]["output"]["voice"] = self.voice  # type: ignore[index]
+            session_config["audio"]["output"]["voice"] = self.voice  # type: ignore[ty:index-out-of-bounds]
 
         return session_config
 

@@ -233,7 +233,7 @@ class CopilotAuthenticator(Authenticator):
                 minutes_left = (expiry_time - current_time).total_seconds() / 60
                 logger.info(f"Cached token is valid for another {minutes_left:.2f} minutes")
 
-            return token_data  # type: ignore[no-any-return]
+            return token_data
 
         except Exception as e:
             error_name = type(e).__name__

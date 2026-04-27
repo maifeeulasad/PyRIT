@@ -183,7 +183,7 @@ def create_conversation_scorer(
         )
 
     # Dynamically create a class that inherits from both ConversationScorer and the scorer's base class
-    class DynamicConversationScorer(ConversationScorer, scorer_base_class):  # type: ignore[misc, valid-type]
+    class DynamicConversationScorer(ConversationScorer, scorer_base_class):  # type: ignore[valid-type]
         """Dynamic ConversationScorer that inherits from both ConversationScorer and the wrapped scorer's base class."""
 
         def __init__(self) -> None:

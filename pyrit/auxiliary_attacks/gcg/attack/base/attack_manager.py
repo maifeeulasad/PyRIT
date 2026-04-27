@@ -81,7 +81,7 @@ def get_embedding_matrix(model: Any) -> Any:
     if isinstance(model, LlamaForCausalLM):
         return model.model.embed_tokens.weight
     if isinstance(model, GPTNeoXForCausalLM):
-        return model.base_model.embed_in.weight  # type: ignore[union-attr, unused-ignore]
+        return model.base_model.embed_in.weight  # type: ignore[ty:possibly-missing-attribute]
     if isinstance(model, MixtralForCausalLM) or isinstance(model, MistralForCausalLM):
         return model.model.embed_tokens.weight
     if isinstance(model, Phi3ForCausalLM):
@@ -95,7 +95,7 @@ def get_embeddings(model: Any, input_ids: torch.Tensor) -> Any:
     if isinstance(model, LlamaForCausalLM):
         return model.model.embed_tokens(input_ids)
     if isinstance(model, GPTNeoXForCausalLM):
-        return model.base_model.embed_in(input_ids).half()  # type: ignore[operator, unused-ignore]
+        return model.base_model.embed_in(input_ids).half()  # type: ignore[ty:unsupported-operator]
     if isinstance(model, MixtralForCausalLM) or isinstance(model, MistralForCausalLM):
         return model.model.embed_tokens(input_ids)
     if isinstance(model, Phi3ForCausalLM):
@@ -271,7 +271,7 @@ class AttackPrompt:
         self.input_ids = torch.tensor(toks[: self._target_slice.stop], device="cpu")
         self.conv_template.messages = []
 
-    @torch.no_grad()  # type: ignore[misc, untyped-decorator, unused-ignore]
+    @torch.no_grad()  # type: ignore[untyped-decorator]
     def generate(self, model: Any, gen_config: Any = None) -> torch.Tensor:
         if gen_config is None:
             gen_config = model.generation_config
@@ -285,7 +285,7 @@ class AttackPrompt:
             input_ids, attention_mask=attn_masks, generation_config=gen_config, pad_token_id=self.tokenizer.pad_token_id
         )[0]
 
-        return output_ids[self._assistant_role_slice.stop :]  # type: ignore[no-any-return, unused-ignore]
+        return output_ids[self._assistant_role_slice.stop :]
 
     def generate_str(self, model: Any, gen_config: Any = None) -> Any:
         return self.tokenizer.decode(self.generate(model, gen_config))
@@ -300,15 +300,15 @@ class AttackPrompt:
         em = self.target in gen_str
         return jailbroken, int(em)
 
-    @torch.no_grad()  # type: ignore[misc, untyped-decorator, unused-ignore]
+    @torch.no_grad()  # type: ignore[untyped-decorator]
     def test_loss(self, model: Any) -> float:
         logits, ids = self.logits(model, return_ids=True)
-        return self.target_loss(logits, ids).mean().item()  # type: ignore[no-any-return, unused-ignore]
+        return self.target_loss(logits, ids).mean().item()
 
     def grad(self, model: Any) -> torch.Tensor:
         raise NotImplementedError("Gradient function not yet implemented")
 
-    @torch.no_grad()  # type: ignore[misc, untyped-decorator, unused-ignore]
+    @torch.no_grad()  # type: ignore[untyped-decorator]
     def logits(self, model: Any, test_controls: Any = None, return_ids: bool = False) -> Any:
         pad_tok = -1
         if test_controls is None:
@@ -443,7 +443,7 @@ class AttackPrompt:
 
     @property
     def eval_str(self) -> str:
-        return (  # type: ignore[no-any-return, unused-ignore]
+        return (
             self.tokenizer.decode(self.input_ids[: self._assistant_role_slice.stop])
             .replace("<s>", "")
             .replace("</s>", "")
@@ -515,7 +515,7 @@ class PromptManager:
         return [prompt.test_loss(model) for prompt in self._prompts]
 
     def grad(self, model: Any) -> torch.Tensor:
-        return sum(prompt.grad(model) for prompt in self._prompts)  # type: ignore[return-value, unused-ignore]
+        return sum(prompt.grad(model) for prompt in self._prompts)  # type: ignore[ty:invalid-return-type]
 
     def logits(self, model: Any, test_controls: Any = None, return_ids: bool = False) -> Any:
         vals = [prompt.logits(model, test_controls, return_ids) for prompt in self._prompts]
@@ -564,7 +564,7 @@ class PromptManager:
 
     @property
     def control_str(self) -> str:
-        return self._prompts[0].control_str  # type: ignore[no-any-return, unused-ignore]
+        return self._prompts[0].control_str
 
     @control_str.setter
     def control_str(self, control: str) -> None:
@@ -867,7 +867,7 @@ class MultiPromptAttack:
         n_em = self.parse_results(prompt_tests_mb)
         n_loss = self.parse_results(model_tests_loss)
         total_tests = self.parse_results(np.ones(prompt_tests_jb.shape, dtype=int))
-        n_loss = [lo / t if t > 0 else 0 for lo, t in zip(n_loss, total_tests)]  # type: ignore[assignment, unused-ignore]
+        n_loss = [lo / t if t > 0 else 0 for lo, t in zip(n_loss, total_tests)]  # type: ignore[ty:invalid-assignment, ty:invalid-parameter-default]
 
         tests["n_passed"] = n_passed
         tests["n_em"] = n_em
@@ -1484,7 +1484,7 @@ class EvaluateAttack:
                 mpa_kwargs[key[4:]] = kwargs[key]
         return mpa_kwargs
 
-    @torch.no_grad()  # type: ignore[misc, untyped-decorator, unused-ignore]
+    @torch.no_grad()  # type: ignore[untyped-decorator]
     def run(
         self,
         steps: int,
@@ -1597,7 +1597,7 @@ class ModelWorker:
             AutoModelForCausalLM.from_pretrained(
                 model_path, token=token, torch_dtype=torch.float16, trust_remote_code=False, **model_kwargs
             )
-            .to(device)  # type: ignore[arg-type, unused-ignore]
+            .to(device)  # type: ignore[ty:invalid-argument-type]
             .eval()
         )
         self.tokenizer = tokenizer
@@ -1614,7 +1614,7 @@ class ModelWorker:
                 break
             ob, fn, args, kwargs = task
             if fn == "grad":
-                with torch.enable_grad():  # type: ignore[no-untyped-call, unused-ignore]
+                with torch.enable_grad():
                     results.put(ob.grad(*args, **kwargs))
             else:
                 with torch.no_grad():
@@ -1651,7 +1651,7 @@ class ModelWorker:
 def get_workers(params: Any, eval: bool = False) -> tuple[list[ModelWorker], list[ModelWorker]]:
     tokenizers = []
     for i in range(len(params.tokenizer_paths)):
-        tokenizer = AutoTokenizer.from_pretrained(  # type: ignore[no-untyped-call, unused-ignore]
+        tokenizer = AutoTokenizer.from_pretrained(
             params.tokenizer_paths[i], token=params.token, trust_remote_code=False, **params.tokenizer_kwargs[i]
         )
         if "oasst-sft-6-llama-30b" in params.tokenizer_paths[i]:

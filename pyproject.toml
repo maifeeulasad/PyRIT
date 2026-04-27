@@ -176,14 +176,15 @@ unresolved-import = "ignore"
 possibly-missing-attribute = "ignore"
 # Allow existing type: ignore comments without matching errors
 unused-ignore-comment = "warn"
+unused-type-ignore-comment = "warn"
 # Allow empty function bodies during development (same as mypy disable_error_code=["empty-body"])
 empty-body = "ignore"
-# Suppress sentinel default pattern false positives (REQUIRED_VALUE, _UNSET)
-# ty doesn't recognize mypy's # type: ignore[assignment] on these
-invalid-parameter-default = "warn"
 
 [tool.ty.analysis]
 respect-type-ignore-comments = true
+# Treat colorama as Any — it has no type stubs and uses a dynamic pattern
+# (class attrs are int, __init__ converts to str via setattr) that ty can't follow
+replace-imports-with-any = ["colorama.**"]
 
 [tool.ty.src]
 exclude = ["doc/code/", "pyrit/auxiliary_attacks/"]
@@ -191,18 +192,6 @@ exclude = ["doc/code/", "pyrit/auxiliary_attacks/"]
 # Relax type checking for HuggingFace module (equivalent to mypy [[tool.mypy.overrides]])
 [[tool.ty.overrides]]
 include = ["pyrit/prompt_target/hugging_face/**"]
-[tool.ty.overrides.rules]
-invalid-argument-type = "warn"
-
-# Downgrade false-positive-heavy rules in printer/fuzzer files
-# These files pass mypy strict but trigger ty false positives (~53% spec conformance)
-[[tool.ty.overrides]]
-include = [
-    "pyrit/executor/attack/printer/**",
-    "pyrit/executor/promptgen/fuzzer/**",
-    "pyrit/scenario/printer/**",
-    "pyrit/score/printer/**",
-]
 [tool.ty.overrides.rules]
 invalid-argument-type = "warn"
 

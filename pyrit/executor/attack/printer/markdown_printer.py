@@ -46,7 +46,7 @@ class MarkdownAttackResultPrinter(AttackResultPrinter):
             try:
                 from IPython.display import Markdown, display
 
-                display(Markdown(full_markdown))  # type: ignore[no-untyped-call]
+                display(Markdown(full_markdown))
             except (ImportError, NameError):
                 # Fallback to print if IPython is not available
                 print(full_markdown)

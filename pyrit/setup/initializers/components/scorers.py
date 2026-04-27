@@ -387,7 +387,7 @@ class ScorerInitializer(PyRITInitializer):
                 scorer_name = f"likert_{scale.name.lower().removesuffix('_scale')}_gpt4o"
                 self._try_register(
                     name=scorer_name,
-                    factory=lambda s=scale: SelfAskLikertScorer(  # type: ignore[misc]
+                    factory=lambda s=scale: SelfAskLikertScorer(
                         chat_target=self._require_dependency(gpt4o, name=GPT4O_TARGET),
                         likert_scale=s,
                     ),
@@ -608,7 +608,7 @@ class ScorerInitializer(PyRITInitializer):
             PromptChatTarget | None: The chat target instance if found, otherwise None.
         """
         target_registry = TargetRegistry.get_registry_singleton()
-        return target_registry.get_instance_by_name(target_name)  # type: ignore[return-value]
+        return target_registry.get_instance_by_name(target_name)  # type: ignore[ty:invalid-return-type]
 
     def _require_dependency(self, value: RequiredDependencyT | None, *, name: str) -> RequiredDependencyT:
         """

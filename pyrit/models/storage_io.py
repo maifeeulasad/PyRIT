@@ -218,7 +218,7 @@ class AzureBlobStorageIO(StorageIO):
         Raises:
             RuntimeError: If the Azure container client is not initialized.
         """
-        content_settings = ContentSettings(content_type=f"{content_type}")  # type: ignore[no-untyped-call, unused-ignore]
+        content_settings = ContentSettings(content_type=f"{content_type}")
         logger.info(msg="\nUploading to Azure Storage as blob:\n\t" + file_name)
 
         try:
@@ -328,7 +328,7 @@ class AzureBlobStorageIO(StorageIO):
             logger.exception(f"Failed to read file at {blob_name}: {exc}")
             raise
         finally:
-            await self._client_async.close()  # type: ignore[no-untyped-call, unused-ignore]
+            await self._client_async.close()
             self._client_async = None
 
     async def write_file(self, path: Union[Path, str], data: bytes) -> None:
@@ -351,7 +351,7 @@ class AzureBlobStorageIO(StorageIO):
             logger.exception(f"Failed to write file at {blob_name}: {exc}")
             raise
         finally:
-            await self._client_async.close()  # type: ignore[no-untyped-call, unused-ignore]
+            await self._client_async.close()
             self._client_async = None
 
     async def path_exists(self, path: Union[Path, str]) -> bool:
@@ -374,7 +374,7 @@ class AzureBlobStorageIO(StorageIO):
         except ResourceNotFoundError:
             return False
         finally:
-            await self._client_async.close()  # type: ignore[no-untyped-call, unused-ignore]
+            await self._client_async.close()
             self._client_async = None
 
     async def is_file(self, path: Union[Path, str]) -> bool:
@@ -397,7 +397,7 @@ class AzureBlobStorageIO(StorageIO):
         except ResourceNotFoundError:
             return False
         finally:
-            await self._client_async.close()  # type: ignore[no-untyped-call, unused-ignore]
+            await self._client_async.close()
             self._client_async = None
 
     async def create_directory_if_not_exists(self, directory_path: Union[Path, str]) -> None:

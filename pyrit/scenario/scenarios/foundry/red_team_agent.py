@@ -296,7 +296,7 @@ class RedTeamAgent(Scenario):
     async def initialize_async(
         self,
         *,
-        objective_target: PromptTarget = REQUIRED_VALUE,  # type: ignore[assignment]
+        objective_target: PromptTarget = REQUIRED_VALUE,  # type: ignore[ty:invalid-assignment, ty:invalid-parameter-default]
         scenario_strategies: Optional[
             Sequence["FoundryStrategy | FoundryComposite | ScenarioCompositeStrategy"]
         ] = None,
@@ -332,7 +332,7 @@ class RedTeamAgent(Scenario):
             memory_labels=memory_labels,
         )
 
-    def _prepare_strategies(  # type: ignore[override]
+    def _prepare_strategies(  # type: ignore[ty:invalid-method-override]
         self,
         strategies: "Optional[Sequence[FoundryStrategy | FoundryComposite | ScenarioCompositeStrategy]]",
     ) -> list[ScenarioStrategy]:
@@ -581,7 +581,7 @@ class RedTeamAgent(Scenario):
 
             # Create the adversarial config from self._adversarial_target
             attack_adversarial_config = AttackAdversarialConfig(target=self._adversarial_chat)
-            kwargs["attack_adversarial_config"] = attack_adversarial_config  # type: ignore[assignment]
+            kwargs["attack_adversarial_config"] = attack_adversarial_config  # type: ignore[ty:invalid-assignment, ty:invalid-parameter-default]
 
         # Add attack-specific kwargs if provided
         if attack_kwargs:
@@ -590,4 +590,4 @@ class RedTeamAgent(Scenario):
         # Type ignore is used because this is a factory method that works with compatible
         # attack types. The caller is responsible for ensuring the attack type accepts
         # these constructor parameters.
-        return attack_type(**kwargs)  # type: ignore[arg-type]
+        return attack_type(**kwargs)  # type: ignore[ty:invalid-argument-type]

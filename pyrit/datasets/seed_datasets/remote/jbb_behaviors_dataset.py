@@ -107,7 +107,7 @@ class _JBBBehaviorsDataset(_RemoteDatasetLoader):
                         "jbb_category": category,
                         "original_source": "JailbreakBench",
                     },
-                    **common_metadata,  # type: ignore[arg-type]
+                    **common_metadata,  # type: ignore[ty:invalid-argument-type]
                 )
 
                 seed_prompts.append(seed_prompt)

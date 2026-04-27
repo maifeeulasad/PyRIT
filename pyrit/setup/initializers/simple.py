@@ -84,7 +84,7 @@ class SimpleInitializer(PyRITInitializer):
             "OPENAI_CHAT_MODEL",
         ]
 
-    def _get_api_key(self) -> str | Callable[[], Awaitable[str]]:  # type: ignore[no-untyped-def]
+    def _get_api_key(self) -> str | Callable[[], Awaitable[str]]:
         """
         Get the API key or Entra auth token provider.
 
@@ -123,7 +123,7 @@ class SimpleInitializer(PyRITInitializer):
         3. Adversarial target configurations
         4. Default values for attack types
         """
-        api_key = self._get_api_key()  # type: ignore[no-untyped-call]
+        api_key = self._get_api_key()
 
         # 1. Setup converter target
         self._setup_converter_target(api_key=api_key)

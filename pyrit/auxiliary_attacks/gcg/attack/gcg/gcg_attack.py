@@ -217,8 +217,8 @@ class GCGMultiPromptAttack(MultiPromptAttack):
                     gc.collect()
 
                     if verbose:
-                        progress.set_description(  # type: ignore[union-attr]
-                            f"loss={loss[j * batch_size : (j + 1) * batch_size].min().item() / (i + 1):.4f}"  # type: ignore[operator]
+                        progress.set_description(  # type: ignore[ty:possibly-missing-attribute]
+                            f"loss={loss[j * batch_size : (j + 1) * batch_size].min().item() / (i + 1):.4f}"  # type: ignore[ty:unsupported-operator]
                         )
 
             min_idx = loss.argmin()
