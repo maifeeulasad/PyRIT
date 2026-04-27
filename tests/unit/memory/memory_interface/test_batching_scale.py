@@ -11,9 +11,10 @@ import hashlib
 import uuid
 from unittest.mock import patch
 
+from pyrit.identifiers import ComponentIdentifier
 from pyrit.memory import MemoryInterface
 from pyrit.memory.memory_models import PromptMemoryEntry
-from pyrit.models import AttackResult, MessagePiece, Score
+from pyrit.models import AttackResult, MessagePiece, ScenarioIdentifier, ScenarioResult, Score
 
 # Use the class attribute for the batch limit in tests
 _MAX_BIND_VARS = MemoryInterface._MAX_BIND_VARS
@@ -52,6 +53,24 @@ def _create_score(message_piece_id: str) -> Score:
         score_metadata={},
         scorer_class_identifier={"__type__": "TestScorer"},
         message_piece_id=message_piece_id,
+    )
+
+
+def _create_scenario_result(
+    name: str = "Test Scenario",
+    attack_results: dict[str, list[AttackResult]] | None = None,
+) -> ScenarioResult:
+    """Create a sample scenario result for testing."""
+    return ScenarioResult(
+        scenario_identifier=ScenarioIdentifier(
+            name=name,
+            description="test",
+            scenario_version=1,
+            init_data={},
+        ),
+        objective_target_identifier=ComponentIdentifier(class_name="TestTarget", class_module="test"),
+        attack_results=attack_results or {},
+        objective_scorer_identifier=ComponentIdentifier(class_name="TestScorer", class_module="test"),
     )
 
 
@@ -583,3 +602,62 @@ class TestEffectiveBatchSize:
         # 100 items / batch_size 30 = ceil(100/30) = 4 batches
         assert call_count == 4, f"Expected 4 queries with batch_size=30, got {call_count}"
         assert len(results) == num_pieces
+
+    def test_multiple_small_params_exceeding_limit_are_promoted(self, sqlite_instance: MemoryInterface):
+        """Test that multiple small params whose total exceeds _MAX_BIND_VARS get promoted to large."""
+        # Create pieces with unique values
+        num_pieces = 400
+        pieces = [_create_message_piece(original_value=f"val_{i}") for i in range(num_pieces)]
+        sqlite_instance.add_message_pieces_to_memory(message_pieces=pieces)
+
+        # Two "small" params each at 400 (under 500 individually, but 800 total > 500)
+        ids = [piece.id for piece in pieces]
+        original_vals = [f"val_{i}" for i in range(400)]
+
+        original_query = sqlite_instance._query_entries
+        call_count = 0
+
+        def spy_query(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            return original_query(*args, **kwargs)
+
+        with patch.object(sqlite_instance, "_query_entries", side_effect=spy_query):
+            results = sqlite_instance.get_message_pieces(
+                prompt_ids=ids,
+                original_values=original_vals,
+            )
+
+        # Without the fix this would try 800 binds in one query.
+        # With the fix, one param is promoted to large and gets batched.
+        assert call_count > 1, f"Expected multiple queries to avoid bind overflow, got {call_count}"
+        assert len(results) == num_pieces
+
+
+class TestScenarioResultBatching:
+    """Tests for batching in get_scenario_results."""
+
+    def test_get_scenario_results_with_many_ids(self, sqlite_instance: MemoryInterface):
+        """Test that get_scenario_results works with more IDs than the batch limit."""
+        num_scenarios = _MAX_BIND_VARS + 50
+        attack_results = [_create_attack_result(objective=f"objective_{i}") for i in range(num_scenarios)]
+        sqlite_instance.add_attack_results_to_memory(attack_results=attack_results)
+
+        scenarios = [
+            _create_scenario_result(
+                name=f"Scenario {i}",
+                attack_results={"attack": [attack_results[i]]},
+            )
+            for i in range(num_scenarios)
+        ]
+        sqlite_instance.add_scenario_results_to_memory(scenario_results=scenarios)
+
+        all_ids = [str(s.id) for s in scenarios]
+        fetched = sqlite_instance.get_scenario_results(scenario_result_ids=all_ids)
+
+        assert len(fetched) == num_scenarios, f"Expected {num_scenarios}, got {len(fetched)}"
+
+    def test_get_scenario_results_empty_list_returns_empty(self, sqlite_instance: MemoryInterface):
+        """Test that explicit empty list returns empty results."""
+        fetched = sqlite_instance.get_scenario_results(scenario_result_ids=[])
+        assert fetched == []
