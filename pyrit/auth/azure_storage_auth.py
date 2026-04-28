@@ -93,4 +93,4 @@ class AzureStorageAuth:
         finally:
             await credential.close()
 
-        return sas_token  # type: ignore[ty:invalid-return-type]
+        return sas_token

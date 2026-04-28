@@ -144,7 +144,7 @@ class BaseClassRegistry(ABC, RegistryProtocol[MetadataT], Generic[T, MetadataT])
         """
         if cls not in cls._instances:
             cls._instances[cls] = cls()  # type: ignore[ty:invalid-assignment, ty:invalid-parameter-default]
-        return cls._instances[cls]  # type: ignore[ty:invalid-return-type]
+        return cls._instances[cls]
 
     @classmethod
     def reset_instance(cls) -> None:

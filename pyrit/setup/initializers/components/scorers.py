@@ -608,7 +608,7 @@ class ScorerInitializer(PyRITInitializer):
             PromptChatTarget | None: The chat target instance if found, otherwise None.
         """
         target_registry = TargetRegistry.get_registry_singleton()
-        return target_registry.get_instance_by_name(target_name)  # type: ignore[ty:invalid-return-type]
+        return target_registry.get_instance_by_name(target_name)
 
     def _require_dependency(self, value: RequiredDependencyT | None, *, name: str) -> RequiredDependencyT:
         """

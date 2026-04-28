@@ -44,11 +44,11 @@ class _AdamOptimizer:
         self.beta_1 = beta_1
         self.beta_2 = beta_2
         self.epsilon = epsilon
-        self.m: np.ndarray  # type: ignore[ty:invalid-type-arguments]  # first moment vector
-        self.v: np.ndarray  # type: ignore[ty:invalid-type-arguments]  # second moment vector
+        self.m: np.ndarray  # first moment vector
+        self.v: np.ndarray  # second moment vector
         self.t = 0  # initialize timestep
 
-    def update(self, *, params: np.ndarray, grads: np.ndarray) -> np.ndarray:  # type: ignore[ty:invalid-type-arguments]
+    def update(self, *, params: np.ndarray, grads: np.ndarray) -> np.ndarray:
         """
         Perform a single update step using the Adam optimization algorithm.
 
@@ -200,7 +200,7 @@ class TransparencyAttackConverter(PromptConverter):
             }
         )
 
-    def _load_and_preprocess_image(self, path: str) -> np.ndarray:  # type: ignore[ty:invalid-type-arguments]
+    def _load_and_preprocess_image(self, path: str) -> np.ndarray:
         """
         Load image, convert to grayscale, resize, and normalize for optimization.
 
@@ -221,7 +221,7 @@ class TransparencyAttackConverter(PromptConverter):
         except Exception as e:
             raise ValueError(f"Failed to load and preprocess image from {path}: {e}") from e
 
-    def _compute_mse_loss(self, blended_image: np.ndarray, target_tensor: np.ndarray) -> float:  # type: ignore[ty:invalid-type-arguments]
+    def _compute_mse_loss(self, blended_image: np.ndarray, target_tensor: np.ndarray) -> float:
         """
         Compute Mean Squared Error (MSE) loss between blended and target images.
 
@@ -234,7 +234,7 @@ class TransparencyAttackConverter(PromptConverter):
         """
         return float(np.mean(np.square(blended_image - target_tensor)))
 
-    def _create_blended_image(self, attack_image: np.ndarray, alpha: np.ndarray) -> np.ndarray:  # type: ignore[ty:invalid-type-arguments]
+    def _create_blended_image(self, attack_image: np.ndarray, alpha: np.ndarray) -> np.ndarray:
         """
         Create a blended image using the attack image and alpha transparency.
 
@@ -256,7 +256,7 @@ class TransparencyAttackConverter(PromptConverter):
 
         return la_image
 
-    async def _save_blended_image(self, attack_image: np.ndarray, alpha: np.ndarray) -> str:  # type: ignore[ty:invalid-type-arguments]
+    async def _save_blended_image(self, attack_image: np.ndarray, alpha: np.ndarray) -> str:
         """
         Save the blended image with transparency as a PNG file.
 

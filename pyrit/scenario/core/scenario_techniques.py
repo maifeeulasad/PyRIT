@@ -102,7 +102,7 @@ def get_default_adversarial_target() -> PromptChatTarget:
                     f"Registry entry 'adversarial_chat' must support multi-turn conversations, "
                     f"but {type(target).__name__} does not."
                 )
-            return target  # type: ignore[ty:invalid-return-type]
+            return target
 
     return OpenAIChatTarget(temperature=1.2)
 
@@ -149,7 +149,7 @@ def build_scenario_techniques() -> list[AttackTechniqueSpec]:
             result.append(
                 dataclasses.replace(
                     spec,
-                    adversarial_chat=resolved,  # type: ignore[ty:invalid-argument-type]
+                    adversarial_chat=resolved,
                     adversarial_chat_key=None,
                 )
             )

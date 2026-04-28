@@ -94,7 +94,7 @@ class MessagePiece:
         """
         self.id = id if id else uuid4()
 
-        if role not in ChatMessageRole.__args__:  # type: ignore[ty:unresolved-attribute]
+        if role not in ChatMessageRole.__args__:
             raise ValueError(f"Role {role} is not a valid role.")
 
         self._role: ChatMessageRole = role

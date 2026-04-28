@@ -263,7 +263,7 @@ class AttackTechniqueRegistry(BaseInstanceRegistry["AttackTechniqueFactory"]):
             members[spec.name] = (spec.name, spec_tags | matched_agg_tags)
 
         # Build the enum class dynamically
-        strategy_cls = ScenarioStrategy(class_name, members)  # type: ignore[ty:invalid-argument-type]
+        strategy_cls = ScenarioStrategy(class_name, members)
 
         # Override get_aggregate_tags on the generated class
         @classmethod

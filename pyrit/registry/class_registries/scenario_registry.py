@@ -109,7 +109,7 @@ class ScenarioRegistry(BaseClassRegistry["Scenario", ScenarioMetadata]):
             for registry_name, scenario_class in discover_in_package(
                 package_path=package_path,
                 package_name="pyrit.scenario.scenarios",
-                base_class=Scenario,  # type: ignore[ty:call-abstract-method]
+                base_class=Scenario,
                 recursive=True,
             ):
                 # Skip deprecated alias classes
@@ -163,7 +163,7 @@ class ScenarioRegistry(BaseClassRegistry["Scenario", ScenarioMetadata]):
 
         try:
             for _, scenario_class in discover_subclasses_in_loaded_modules(
-                base_class=Scenario  # type: ignore[ty:call-abstract-method]
+                base_class=Scenario
             ):
                 # Check if this is a user-defined class (not from pyrit.scenario.scenarios)
                 if not scenario_class.__module__.startswith("pyrit.scenario.scenarios"):
