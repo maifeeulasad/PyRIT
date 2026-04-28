@@ -79,8 +79,6 @@ class SubStringScorer(TrueFalseScorer):
             list[Score]: A list containing a single Score object with a boolean value indicating
                 whether the substring matches the text according to the matching strategy.
         """
-        assert message_piece.id is not None
-
         substring_present = self._text_matcher.is_match(target=self._substring, text=message_piece.converted_value)
 
         return [
@@ -92,7 +90,7 @@ class SubStringScorer(TrueFalseScorer):
                 score_category=self._score_categories,
                 score_rationale="",
                 scorer_class_identifier=self.get_identifier(),
-                message_piece_id=message_piece.id,
+                message_piece_id=message_piece.id,  # type: ignore[ty:invalid-argument-type]
                 objective=objective,
             )
         ]

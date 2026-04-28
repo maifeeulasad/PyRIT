@@ -80,8 +80,6 @@ class QuestionAnswerScorer(TrueFalseScorer):
         Returns:
             list[Score]: A list containing a single Score object indicating whether the correct answer was found.
         """
-        assert message_piece.id is not None
-
         result = False
         matching_text = None
 
@@ -108,7 +106,7 @@ class QuestionAnswerScorer(TrueFalseScorer):
                     else "No matching text found in response"
                 ),
                 scorer_class_identifier=self.get_identifier(),
-                message_piece_id=message_piece.id,
+                message_piece_id=message_piece.id,  # type: ignore[ty:invalid-argument-type]
                 objective=objective,
             )
         ]

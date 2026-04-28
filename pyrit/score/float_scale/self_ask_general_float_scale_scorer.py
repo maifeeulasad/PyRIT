@@ -120,8 +120,6 @@ class SelfAskGeneralFloatScaleScorer(FloatScaleScorer):
         Returns:
             list[Score]: A list with a single float-scale score in [0, 1].
         """
-        assert message_piece.id is not None
-
         original_prompt = message_piece.converted_value
 
         # Render system prompt and user prompt
@@ -144,7 +142,7 @@ class SelfAskGeneralFloatScaleScorer(FloatScaleScorer):
             system_prompt=system_prompt,
             message_value=user_prompt,
             message_data_type=message_piece.converted_value_data_type,
-            scored_prompt_id=message_piece.id,
+            scored_prompt_id=message_piece.id,  # type: ignore[ty:invalid-argument-type]
             category=self._score_category,
             objective=objective,
             attack_identifier=message_piece.attack_identifier,

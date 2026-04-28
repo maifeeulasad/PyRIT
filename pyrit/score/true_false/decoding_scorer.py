@@ -79,8 +79,6 @@ class DecodingScorer(TrueFalseScorer):
             list[Score]: A list containing a single Score object with a boolean value indicating
                 whether any of the user piece values match the response.
         """
-        assert message_piece.id is not None
-
         memory = CentralMemory.get_memory_instance()
         user_request = memory.get_request_from_response(response=message_piece.to_message())
 
@@ -113,7 +111,7 @@ class DecodingScorer(TrueFalseScorer):
                 score_category=self._score_categories,
                 score_rationale="",
                 scorer_class_identifier=self.get_identifier(),
-                message_piece_id=message_piece.id,
+                message_piece_id=message_piece.id,  # type: ignore[ty:invalid-argument-type]
                 objective=objective,
             )
         ]

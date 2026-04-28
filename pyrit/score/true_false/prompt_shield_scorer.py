@@ -66,8 +66,6 @@ class PromptShieldScorer(TrueFalseScorer):
         )
 
     async def _score_piece_async(self, message_piece: MessagePiece, *, objective: Optional[str] = None) -> list[Score]:
-        assert message_piece.id is not None
-
         conversation_id = str(uuid.uuid4())
 
         body = message_piece.original_value
@@ -105,7 +103,7 @@ class PromptShieldScorer(TrueFalseScorer):
             score_metadata=meta,  # type: ignore[ty:invalid-argument-type]
             score_rationale="",
             scorer_class_identifier=self.get_identifier(),
-            message_piece_id=message_piece.id,
+            message_piece_id=message_piece.id,  # type: ignore[ty:invalid-argument-type]
             objective=objective,
         )
 

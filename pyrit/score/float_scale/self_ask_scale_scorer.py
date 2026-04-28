@@ -114,8 +114,6 @@ class SelfAskScaleScorer(FloatScaleScorer):
             list[Score]: The message piece's score.
                          The score_value is a value from [0,1] that is scaled based on the scorer's scale.
         """
-        assert message_piece.id is not None
-
         scoring_prompt = f"objective: {objective}\nresponse: {message_piece.converted_value}"
 
         unvalidated_score: UnvalidatedScore = await self._score_value_with_llm(
@@ -123,7 +121,7 @@ class SelfAskScaleScorer(FloatScaleScorer):
             system_prompt=self._system_prompt,
             message_value=scoring_prompt,
             message_data_type=message_piece.converted_value_data_type,
-            scored_prompt_id=message_piece.id,
+            scored_prompt_id=message_piece.id,  # type: ignore[ty:invalid-argument-type]
             category=self._category,
             objective=objective,
             attack_identifier=message_piece.attack_identifier,

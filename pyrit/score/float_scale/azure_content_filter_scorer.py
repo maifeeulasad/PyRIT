@@ -270,8 +270,6 @@ class AzureContentFilterScorer(FloatScaleScorer):
         Raises:
             ValueError: If converted_value_data_type is not "text" or "image_path" or image isn't in supported format.
         """
-        assert message_piece.id is not None
-
         filter_results: list[AnalyzeTextResult | AnalyzeImageResult] = []
 
         if message_piece.converted_value_data_type == "text":
@@ -318,7 +316,7 @@ class AzureContentFilterScorer(FloatScaleScorer):
                     score_metadata=metadata,
                     score_rationale="",
                     scorer_class_identifier=self.get_identifier(),
-                    message_piece_id=message_piece.id,
+                    message_piece_id=message_piece.id,  # type: ignore[ty:invalid-argument-type]
                     objective=objective,
                 )
                 all_scores.append(score_obj)
@@ -338,7 +336,7 @@ class AzureContentFilterScorer(FloatScaleScorer):
                 score_metadata=result.metadata,
                 score_rationale=result.rationale,
                 scorer_class_identifier=self.get_identifier(),
-                message_piece_id=message_piece.id,
+                message_piece_id=message_piece.id,  # type: ignore[ty:invalid-argument-type]
                 objective=objective,
             )
             for result in aggregated_results
