@@ -270,6 +270,8 @@ class AzureContentFilterScorer(FloatScaleScorer):
         Raises:
             ValueError: If converted_value_data_type is not "text" or "image_path" or image isn't in supported format.
         """
+        assert message_piece.id is not None
+
         filter_results: list[AnalyzeTextResult | AnalyzeImageResult] = []
 
         if message_piece.converted_value_data_type == "text":

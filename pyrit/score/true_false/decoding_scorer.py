@@ -61,7 +61,7 @@ class DecodingScorer(TrueFalseScorer):
         """
         return self._create_identifier(
             params={
-                "score_aggregator": self._score_aggregator.__name__,
+                "score_aggregator": self._score_aggregator.__name__,  # type: ignore[ty:unresolved-attribute]
                 "text_matcher": self._text_matcher.__class__.__name__,
             },
         )
@@ -79,6 +79,8 @@ class DecodingScorer(TrueFalseScorer):
             list[Score]: A list containing a single Score object with a boolean value indicating
                 whether any of the user piece values match the response.
         """
+        assert message_piece.id is not None
+
         memory = CentralMemory.get_memory_instance()
         user_request = memory.get_request_from_response(response=message_piece.to_message())
 

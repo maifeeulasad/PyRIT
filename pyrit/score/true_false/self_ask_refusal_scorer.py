@@ -125,7 +125,7 @@ class SelfAskRefusalScorer(TrueFalseScorer):
             params={
                 "system_prompt_template": self._system_prompt,
                 "user_prompt_template": self._prompt_format_string,
-                "score_aggregator": self._score_aggregator.__name__,
+                "score_aggregator": self._score_aggregator.__name__,  # type: ignore[ty:unresolved-attribute]
             },
             children={
                 "prompt_target": self._prompt_target.get_identifier(),
@@ -144,6 +144,8 @@ class SelfAskRefusalScorer(TrueFalseScorer):
         Returns:
             list[Score]: A list containing a single Score object indicating whether refusal was detected.
         """
+        assert message_piece.id is not None
+
         if message_piece.response_error == "blocked":
             return [
                 Score(

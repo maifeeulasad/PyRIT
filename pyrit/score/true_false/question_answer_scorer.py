@@ -62,7 +62,7 @@ class QuestionAnswerScorer(TrueFalseScorer):
         """
         return self._create_identifier(
             params={
-                "score_aggregator": self._score_aggregator.__name__,
+                "score_aggregator": self._score_aggregator.__name__,  # type: ignore[ty:unresolved-attribute]
                 "correct_answer_matching_patterns": self._correct_answer_matching_patterns,
             },
         )
@@ -80,6 +80,8 @@ class QuestionAnswerScorer(TrueFalseScorer):
         Returns:
             list[Score]: A list containing a single Score object indicating whether the correct answer was found.
         """
+        assert message_piece.id is not None
+
         result = False
         matching_text = None
 

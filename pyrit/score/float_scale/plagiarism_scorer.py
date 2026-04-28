@@ -176,6 +176,8 @@ class PlagiarismScorer(FloatScaleScorer):
         Returns:
             list[Score]: A list containing the computed score.
         """
+        assert message_piece.id is not None
+
         response_to_evaluate = message_piece.converted_value
         score_value = self._plagiarism_score(response_to_evaluate, self.reference_text, metric=self.metric, n=self.n)
 

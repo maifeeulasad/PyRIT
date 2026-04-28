@@ -58,7 +58,7 @@ class PromptShieldScorer(TrueFalseScorer):
         """
         return self._create_identifier(
             params={
-                "score_aggregator": self._score_aggregator.__name__,
+                "score_aggregator": self._score_aggregator.__name__,  # type: ignore[ty:unresolved-attribute]
             },
             children={
                 "prompt_target": self._prompt_target.get_identifier(),
@@ -66,6 +66,8 @@ class PromptShieldScorer(TrueFalseScorer):
         )
 
     async def _score_piece_async(self, message_piece: MessagePiece, *, objective: Optional[str] = None) -> list[Score]:
+        assert message_piece.id is not None
+
         conversation_id = str(uuid.uuid4())
 
         body = message_piece.original_value

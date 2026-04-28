@@ -86,6 +86,8 @@ class InsecureCodeScorer(FloatScaleScorer):
         Raises:
             InvalidJsonException: If the expected 'score_value' key is missing in the response.
         """
+        assert message_piece.id is not None
+
         # Use _score_value_with_llm to interact with the LLM and retrieve an UnvalidatedScore
         unvalidated_score = await self._score_value_with_llm(
             prompt_target=self._prompt_target,

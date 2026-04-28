@@ -78,3 +78,11 @@ repos:
       files: ^doc.*\.(py|md)$
       additional_dependencies: ['requests']
       exclude: (release_process.md|git.md|^doc/deployment/|tests|pyrit/prompt_converter/morse_converter.py|.github|pyrit/prompt_converter/emoji_converter.py|pyrit/score/markdown_injection.py|^pyrit/datasets/|^pyrit/auxiliary_attacks/gcg/)
+
+  - repo: https://github.com/allganize/ty-pre-commit
+    rev: v0.0.32
+    hooks:
+      - id: ty-check
+        name: ty (type check)
+        files: ^pyrit/
+        types: [python]
