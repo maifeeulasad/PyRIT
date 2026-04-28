@@ -491,13 +491,10 @@ class ScorerInitializer(PyRITInitializer):
             name=ACS_WITH_REFUSAL,
             factory=lambda: TrueFalseCompositeScorer(
                 aggregator=TrueFalseScoreAggregator.AND,
-                scorers=cast(
-                    "list[TrueFalseScorer]",
-                    [
-                        self._require_dependency(acs, name="acs_threshold"),
-                        TrueFalseInverterScorer(scorer=self._require_dependency(refusal, name="refusal")),
-                    ],
-                ),
+                scorers=[
+                    self._require_dependency(acs, name="acs_threshold"),
+                    TrueFalseInverterScorer(scorer=self._require_dependency(refusal, name="refusal")),
+                ],
             ),
             required_targets=[acs, refusal],
             tags=composite_tag,
@@ -506,13 +503,10 @@ class ScorerInitializer(PyRITInitializer):
             name=SCALE_AND_REFUSAL,
             factory=lambda: TrueFalseCompositeScorer(
                 aggregator=TrueFalseScoreAggregator.AND,
-                scorers=cast(
-                    "list[TrueFalseScorer]",
-                    [
-                        self._require_dependency(scale, name="scale"),
-                        TrueFalseInverterScorer(scorer=self._require_dependency(refusal, name="refusal")),
-                    ],
-                ),
+                scorers=[
+                    self._require_dependency(scale, name="scale"),
+                    TrueFalseInverterScorer(scorer=self._require_dependency(refusal, name="refusal")),
+                ],
             ),
             required_targets=[scale, refusal],
             tags=composite_tag,

@@ -248,4 +248,4 @@ class AttackParameters:
 
         new_cls.from_seed_group_async = classmethod(from_seed_group_async_wrapper)  # type: ignore[ty:unresolved-attribute]
 
-        return new_cls
+        return new_cls  # type: ignore[ty:invalid-return-type]

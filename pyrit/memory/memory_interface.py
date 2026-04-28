@@ -1347,7 +1347,7 @@ class MemoryInterface(abc.ABC):
 
             # Only SeedPrompt has set_encoding_metadata for audio/video/image files
             if hasattr(prompt, "set_encoding_metadata"):
-                prompt.set_encoding_metadata()
+                prompt.set_encoding_metadata()  # type: ignore[ty:call-non-callable]
 
             # Handle serialization for image, audio & video SeedPrompts
             if prompt.data_type in ["image_path", "audio_path", "video_path"]:

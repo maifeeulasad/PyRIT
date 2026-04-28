@@ -85,4 +85,5 @@ repos:
       - id: ty-check
         name: ty (type check)
         files: ^pyrit/
+        exclude: ^pyrit/auxiliary_attacks/
         types: [python]

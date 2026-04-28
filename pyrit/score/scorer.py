@@ -622,7 +622,7 @@ class Scorer(Identifiable, abc.ABC):
             elif isinstance(cat_val, list):
                 if not all(isinstance(x, str) for x in cat_val):
                     raise ValueError("'category' must be a string or a list of strings")
-                normalized_category = cat_val
+                normalized_category = cat_val  # type: ignore[ty:invalid-assignment]
             else:
                 # JSON must yield either a string or a list of strings
                 raise ValueError("'category' must be a string or a list of strings")

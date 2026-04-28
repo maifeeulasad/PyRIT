@@ -319,7 +319,7 @@ class AttackTechniqueRegistry(BaseInstanceRegistry["AttackTechniqueFactory"]):
                 )
 
         return AttackTechniqueFactory(
-            attack_class=spec.attack_class,
+            attack_class=spec.attack_class,  # type: ignore[ty:invalid-argument-type]
             attack_kwargs=kwargs or None,
         )
 

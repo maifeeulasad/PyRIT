@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import Any, Optional, cast
 
 from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
+    AutoModelForCausalLM,  # type: ignore[ty:possibly-missing-import]
+    AutoTokenizer,  # type: ignore[ty:possibly-missing-import]
     BatchEncoding,
     PretrainedConfig,
 )
@@ -353,7 +353,7 @@ class HuggingFaceChatTarget(PromptChatTarget):
             # Decode the assistant's response from the generated token IDs
             assistant_response = cast(
                 "str",
-                self.tokenizer.decode(generated_tokens, skip_special_tokens=self.skip_special_tokens),
+                self.tokenizer.decode(generated_tokens, skip_special_tokens=self.skip_special_tokens),  # type: ignore[ty:unresolved-attribute]
             ).strip()
 
             if not assistant_response:
