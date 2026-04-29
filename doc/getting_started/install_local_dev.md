@@ -188,7 +188,7 @@ If you prefer conda for environment management, you can use it to create a Pytho
 
 ### Prerequisites
 
-1. **Conda or Miniconda**: Download from [https://docs.conda.io/en/latest/miniconda.html](https://docs.conda.io/en/latest/miniconda.html)
+1. **Conda or Miniconda**: Download from [https://docs.anaconda.com/free/miniconda/](https://docs.anaconda.com/free/miniconda/)
 
 2. **Git**: Clone the repository:
     ```bash

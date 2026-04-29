@@ -365,6 +365,10 @@ notice-rgx = "Copyright \\(c\\) Microsoft Corporation\\.\\s*\\n.*Licensed under 
 "pyrit/__init__.py" = ["D104"]
 # Allow broad pytest.raises(Exception) in tests
 "tests/**/*.py" = ["ANN", "B017"]
+# Infrastructure/utility scripts — not part of the library API
+"build_scripts/**/*.py" = ["ANN"]
+"docker/**/*.py" = ["ANN"]
+"frontend/dev.py" = ["ANN"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
