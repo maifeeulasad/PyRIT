@@ -16,9 +16,6 @@
         "python.analysis.extraPaths": [
           "/workspace"
         ],
-        "python.linting.mypyArgs": [
-          "--cache-dir=.mypy_cache"
-        ],
         "python.analysis.typeCheckingMode": "basic",
         "python.analysis.diagnosticMode": "openFilesOnly",
         "python.analysis.autoSearchPaths": false,
