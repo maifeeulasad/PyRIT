@@ -87,7 +87,7 @@ class TextTarget(PromptTarget):
                     original_value_data_type=row.get("data_type", None),  # type: ignore[ty:invalid-argument-type]
                     conversation_id=row.get("conversation_id", None),
                     sequence=int(sequence_str) if sequence_str else 0,
-                    labels=labels,
+                    labels=labels,  # deprecated
                     response_error=row.get("response_error", None),  # type: ignore[ty:invalid-argument-type]
                     prompt_target_identifier=self.get_identifier(),
                 )
